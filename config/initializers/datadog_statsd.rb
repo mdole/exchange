@@ -3,7 +3,7 @@ module Datadog
     attr_accessor :disabled
 
     def send_to_socket(message)
-      print message # rubocop:disable Rails/Output
+      print message
       super unless disabled
     end
   end
