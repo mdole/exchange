@@ -57,6 +57,14 @@ services:
 foreman start -f Procfile.dev
 ```
 
+## Running Prettier Ruby
+
+Exchange uses [Prettier Ruby](https://github.com/prettier/plugin-ruby) to standarize coding styles:
+
+```sh
+bundle exec rake prettier
+```
+
 ## Did You Change Models?
 
 ### Papertrail Audit Logging
