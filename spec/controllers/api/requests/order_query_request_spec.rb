@@ -30,7 +30,16 @@ describe Api::GraphqlController, type: :request do
         state_reason: state == Order::CANCELED ? 'seller_lapsed' : nil
       )
     end
-    let!(:user2_order1) { Fabricate(:order, seller_id: second_seller_id, seller_type: 'gallery', buyer_id: second_user, buyer_type: 'user', items_total_cents: 0) }
+    let!(:user2_order1) do
+      Fabricate(
+        :order,
+        seller_id: second_seller_id,
+        seller_type: 'gallery',
+        buyer_id: second_user,
+        buyer_type: 'user',
+        items_total_cents: 0
+      )
+    end
 
     let(:query) do
       <<-GRAPHQL
@@ -179,14 +188,18 @@ describe Api::GraphqlController, type: :request do
 
     context 'user accessing their order' do
       it 'returns not found error when query for orders by user not in jwt' do
-        expect do
+        expect {
           client.execute(query, id: user2_order1.id)
-        end.to raise_error do |error|
+        }.to raise_error do |error|
           expect(error).to be_a(Graphlient::Errors::ServerError)
           expect(error.message).to eq 'the server responded with status 404'
           expect(error.status_code).to eq 404
-          expect(error.response['errors'].first['extensions']['code']).to eq 'not_found'
-          expect(error.response['errors'].first['extensions']['type']).to eq 'validation'
+          expect(
+            error.response['errors'].first['extensions']['code']
+          ).to eq 'not_found'
+          expect(
+            error.response['errors'].first['extensions']['type']
+          ).to eq 'validation'
         end
       end
 
@@ -222,46 +235,101 @@ describe Api::GraphqlController, type: :request do
       end
 
       context 'with line items' do
-        let!(:order1_line_item1) { Fabricate(:line_item, order: user1_order1, artwork_id: 'artwork1', edition_set_id: 'edi-1') }
-        let!(:order1_line_item2) { Fabricate(:line_item, order: user1_order1, artwork_id: 'artwork2', edition_set_id: 'edi-2') }
+        let!(:order1_line_item1) do
+          Fabricate(
+            :line_item,
+            order: user1_order1, artwork_id: 'artwork1', edition_set_id: 'edi-1'
+          )
+        end
+        let!(:order1_line_item2) do
+          Fabricate(
+            :line_item,
+            order: user1_order1, artwork_id: 'artwork2', edition_set_id: 'edi-2'
+          )
+        end
 
         it 'includes line items' do
           result = client.execute(query, id: user1_order1.id)
           expect(result.data.order.line_items.edges.count).to eq 2
-          expect(result.data.order.line_items.edges.map(&:node).map(&:id)).to match_array [order1_line_item1.id, order1_line_item2.id]
-          expect(result.data.order.line_items.edges.map(&:node).map(&:artwork_id)).to match_array %w[artwork1 artwork2]
-          expect(result.data.order.line_items.edges.map(&:node).map(&:edition_set_id)).to match_array %w[edi-1 edi-2]
+          expect(
+            result.data.order.line_items.edges.map(&:node).map(&:id)
+          ).to match_array [order1_line_item1.id, order1_line_item2.id]
+          expect(
+            result.data.order.line_items.edges.map(&:node).map(&:artwork_id)
+          ).to match_array %w[artwork1 artwork2]
+          expect(
+            result.data.order.line_items.edges.map(&:node).map(&:edition_set_id)
+          ).to match_array %w[edi-1 edi-2]
         end
       end
 
       context 'with offers' do
         let(:state) { Order::SUBMITTED }
         let(:order_mode) { Order::OFFER }
-        let!(:buyer_offer) { Fabricate(:offer, order: user1_order1, amount_cents: 200, from_id: user_id, from_type: Order::USER, submitted_at: Date.new(2018, 1, 1)) }
-        let!(:seller_offer) { Fabricate(:offer, order: user1_order1, amount_cents: 300, from_id: seller_id, from_type: 'gallery', responds_to_id: buyer_offer.id, submitted_at: Date.new(2018, 1, 2)) }
-        let!(:pending_buyer_offer) { Fabricate(:offer, order: user1_order1, amount_cents: 200, from_id: user_id, from_type: Order::USER) }
-
-        before do
-          user1_order1.update! last_offer: seller_offer
+        let!(:buyer_offer) do
+          Fabricate(
+            :offer,
+            order: user1_order1,
+            amount_cents: 200,
+            from_id: user_id,
+            from_type: Order::USER,
+            submitted_at: Date.new(2_018, 1, 1)
+          )
         end
+        let!(:seller_offer) do
+          Fabricate(
+            :offer,
+            order: user1_order1,
+            amount_cents: 300,
+            from_id: seller_id,
+            from_type: 'gallery',
+            responds_to_id: buyer_offer.id,
+            submitted_at: Date.new(2_018, 1, 2)
+          )
+        end
+        let!(:pending_buyer_offer) do
+          Fabricate(
+            :offer,
+            order: user1_order1,
+            amount_cents: 200,
+            from_id: user_id,
+            from_type: Order::USER
+          )
+        end
+
+        before { user1_order1.update! last_offer: seller_offer }
 
         describe 'the query result' do
           let(:result) { client.execute(query, id: user1_order1.id) }
 
           it 'excludes pending offers' do
             expect(result.data.order.offers.edges.count).to eq 2
-            expect(result.data.order.offers.edges.map(&:node).map(&:id)).to match_array [buyer_offer.id, seller_offer.id]
-            expect(result.data.order.offers.edges.map(&:node).map(&:amount_cents)).to match_array [200, 300]
-            expect(result.data.order.offers.edges.map(&:node).map(&:from).map(&:id)).to match_array [user_id, seller_id]
-            expect(result.data.order.offers.edges.map(&:node).map(&:from).map(&:__typename)).to match_array %w[User Partner]
-            expect(result.data.order.offers.edges.first.node.submitted_at).to eq '2018-01-02T00:00:00Z'
+            expect(
+              result.data.order.offers.edges.map(&:node).map(&:id)
+            ).to match_array [buyer_offer.id, seller_offer.id]
+            expect(
+              result.data.order.offers.edges.map(&:node).map(&:amount_cents)
+            ).to match_array [200, 300]
+            expect(
+              result.data.order.offers.edges.map(&:node).map(&:from).map(&:id)
+            ).to match_array [user_id, seller_id]
+            expect(
+              result.data.order.offers.edges.map(&:node).map(&:from).map(
+                &:__typename
+              )
+            ).to match_array %w[User Partner]
+            expect(
+              result.data.order.offers.edges.first.node.submitted_at
+            ).to eq '2018-01-02T00:00:00Z'
           end
 
           it 'includes last_offer' do
             expect(result.data.order.last_offer.id).to eq seller_offer.id
             expect(result.data.order.last_offer.from.id).to eq seller_id
             expect(result.data.order.last_offer.from.__typename).to eq 'Partner'
-            expect(result.data.order.last_offer.responds_to.id).to eq buyer_offer.id
+            expect(
+              result.data.order.last_offer.responds_to.id
+            ).to eq buyer_offer.id
           end
 
           it 'includes last_transaction_failed' do
@@ -270,7 +338,13 @@ describe Api::GraphqlController, type: :request do
         end
 
         describe 'awaiting_response_from' do
-          [Order::APPROVED, Order::PENDING, Order::FULFILLED, Order::REFUNDED, Order::ABANDONED].each do |state|
+          [
+            Order::APPROVED,
+            Order::PENDING,
+            Order::FULFILLED,
+            Order::REFUNDED,
+            Order::ABANDONED
+          ].each do |state|
             context "Order in #{state} state" do
               let(:state) { state }
 
@@ -297,9 +371,7 @@ describe Api::GraphqlController, type: :request do
           end
 
           context 'last offer from buyer' do
-            before do
-              user1_order1.update! last_offer: buyer_offer
-            end
+            before { user1_order1.update! last_offer: buyer_offer }
 
             it 'returns BUYER for awaitingResponseFrom' do
               result = client.execute(query, id: user1_order1.id)
@@ -310,28 +382,53 @@ describe Api::GraphqlController, type: :request do
 
         describe 'offer filters' do
           it 'filters by from id' do
-            result = client.execute(query, id: user1_order1.id, offerFromId: user_id)
+            result =
+              client.execute(query, id: user1_order1.id, offerFromId: user_id)
             expect(result.data.order.offers.edges.count).to eq 1
-            expect(result.data.order.offers.edges.map(&:node).map(&:id)).to eq [buyer_offer.id]
-            expect(result.data.order.offers.edges.map(&:node).map(&:amount_cents)).to eq [200]
-            expect(result.data.order.offers.edges.map(&:node).map(&:from).map(&:id)).to eq [user_id]
-            expect(result.data.order.offers.edges.map(&:node).map(&:from).map(&:__typename)).to eq %w[User]
+            expect(result.data.order.offers.edges.map(&:node).map(&:id)).to eq [
+                 buyer_offer.id
+               ]
+            expect(
+              result.data.order.offers.edges.map(&:node).map(&:amount_cents)
+            ).to eq [200]
+            expect(
+              result.data.order.offers.edges.map(&:node).map(&:from).map(&:id)
+            ).to eq [user_id]
+            expect(
+              result.data.order.offers.edges.map(&:node).map(&:from).map(
+                &:__typename
+              )
+            ).to eq %w[User]
           end
 
           it 'filters by from type' do
-            result = client.execute(query, id: user1_order1.id, offerFromType: 'gallery')
+            result =
+              client.execute(
+                query,
+                id: user1_order1.id, offerFromType: 'gallery'
+              )
             expect(result.data.order.offers.edges.count).to eq 1
-            expect(result.data.order.offers.edges.map(&:node).map(&:id)).to eq [seller_offer.id]
-            expect(result.data.order.offers.edges.map(&:node).map(&:amount_cents)).to eq [300]
-            expect(result.data.order.offers.edges.map(&:node).map(&:from).map(&:id)).to eq [seller_id]
-            expect(result.data.order.offers.edges.map(&:node).map(&:from).map(&:__typename)).to eq %w[Partner]
+            expect(result.data.order.offers.edges.map(&:node).map(&:id)).to eq [
+                 seller_offer.id
+               ]
+            expect(
+              result.data.order.offers.edges.map(&:node).map(&:amount_cents)
+            ).to eq [300]
+            expect(
+              result.data.order.offers.edges.map(&:node).map(&:from).map(&:id)
+            ).to eq [seller_id]
+            expect(
+              result.data.order.offers.edges.map(&:node).map(&:from).map(
+                &:__typename
+              )
+            ).to eq %w[Partner]
           end
         end
       end
 
       Order::STATES.each do |state|
-        # https://github.com/artsy/exchange/issues/88
-        context "order in #{state} state" do
+        context # https://github.com/artsy/exchange/issues/88
+                "order in #{state} state" do
           let(:state) { state }
           it 'returns proper state' do
             result = client.execute(query, id: user1_order1.id)
@@ -356,9 +453,9 @@ describe Api::GraphqlController, type: :request do
         let(:jwt_roles) { 'trusted' }
 
         it 'allows action' do
-          expect do
+          expect {
             client.execute(query, id: user2_order1.id)
-          end.to_not raise_error
+          }.to_not raise_error
         end
 
         it 'returns expected payload' do
@@ -378,18 +475,22 @@ describe Api::GraphqlController, type: :request do
         end
       end
 
-      context 'untrusted account accessing another account\'s order' do
+      context "untrusted account accessing another account's order" do
         let(:jwt_roles) { 'foobar' }
 
         it 'raises error' do
-          expect do
+          expect {
             client.execute(query, id: user2_order1.id)
-          end.to raise_error do |error|
+          }.to raise_error do |error|
             expect(error).to be_a(Graphlient::Errors::ServerError)
             expect(error.message).to eq 'the server responded with status 404'
             expect(error.status_code).to eq 404
-            expect(error.response['errors'].first['extensions']['code']).to eq 'not_found'
-            expect(error.response['errors'].first['extensions']['type']).to eq 'validation'
+            expect(
+              error.response['errors'].first['extensions']['code']
+            ).to eq 'not_found'
+            expect(
+              error.response['errors'].first['extensions']['type']
+            ).to eq 'validation'
           end
         end
       end
@@ -398,9 +499,9 @@ describe Api::GraphqlController, type: :request do
         let(:jwt_roles) { 'sales_admin' }
 
         it 'allows action' do
-          expect do
+          expect {
             client.execute(query, id: user2_order1.id)
-          end.to_not raise_error
+          }.to_not raise_error
         end
 
         it 'returns expected payload' do
@@ -416,7 +517,8 @@ describe Api::GraphqlController, type: :request do
 
     context 'partner accessing order' do
       it 'returns order when accessing correct order' do
-        another_user_order = Fabricate(:order, seller_id: seller_id, buyer_id: 'someone-else-id')
+        another_user_order =
+          Fabricate(:order, seller_id: seller_id, buyer_id: 'someone-else-id')
         result = client.execute(query, id: another_user_order.id)
         expect(result.data.order.buyer.id).to eq 'someone-else-id'
         expect(result.data.order.seller.id).to eq seller_id

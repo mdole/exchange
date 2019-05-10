@@ -6,9 +6,7 @@ class OrderCancellationService
   end
 
   def seller_lapse!
-    @order.seller_lapse! do
-      process_stripe_refund if @order.mode == Order::BUY
-    end
+    @order.seller_lapse! { process_stripe_refund if @order.mode == Order::BUY }
     process_inventory_undeduction
     OrderEvent.delay_post(@order, Order::CANCELED)
   ensure
@@ -32,9 +30,7 @@ class OrderCancellationService
   end
 
   def refund!
-    @order.refund! do
-      process_stripe_refund
-    end
+    @order.refund! { process_stripe_refund }
     record_stats
     process_inventory_undeduction
     OrderEvent.delay_post(@order, Order::REFUNDED, @user_id)
@@ -45,14 +41,26 @@ class OrderCancellationService
   private
 
   def process_inventory_undeduction
-    @order.line_items.each { |li| UndeductLineItemInventoryJob.perform_later(li.id) }
+    @order.line_items.each do |li|
+      UndeductLineItemInventoryJob.perform_later(li.id)
+    end
   end
 
   def process_stripe_refund
-    raise Errors::ValidationError.new(:unsupported_payment_method, @order.payment_method) unless @order.payment_method == Order::CREDIT_CARD
+    unless @order.payment_method == Order::CREDIT_CARD
+      raise Errors::ValidationError.new(
+              :unsupported_payment_method,
+              @order.payment_method
+            )
+    end
 
     @transaction = PaymentService.refund_charge(@order.external_charge_id)
-    raise Errors::ProcessingError.new(:refund_failed, @transaction.failure_data) if @transaction.failed?
+    if @transaction.failed?
+      raise Errors::ProcessingError.new(
+              :refund_failed,
+              @transaction.failure_data
+            )
+    end
   end
 
   def record_stats

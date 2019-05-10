@@ -1,8 +1,6 @@
 class TransactionEvent < Events::BaseEvent
   TOPIC = 'commerce'.freeze
-  ACTIONS = [
-    CREATED = 'created'.freeze
-  ].freeze
+  ACTIONS = [CREATED = 'created'.freeze].freeze
 
   def self.post(transaction, action, user_id)
     event = new(user: user_id, action: action, model: transaction)
@@ -10,9 +8,7 @@ class TransactionEvent < Events::BaseEvent
   end
 
   def subject
-    {
-      id: @subject
-    }
+    { id: @subject }
   end
 
   def properties
@@ -28,6 +24,7 @@ class TransactionEvent < Events::BaseEvent
 
   def order_details
     order = @object.order
+
     {
       id: order.id,
       mode: order.mode,

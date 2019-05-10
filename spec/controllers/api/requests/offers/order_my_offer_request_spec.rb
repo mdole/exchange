@@ -23,9 +23,42 @@ describe Api::GraphqlController, type: :request do
         state: Order::SUBMITTED
       )
     end
-    let(:buyer_offer1) { Fabricate(:offer, order: order, amount_cents: 200, from_id: buyer_id, from_type: Order::USER, creator_id: buyer_id, submitted_at: 2.days.ago, created_at: 2.days.ago) }
-    let(:buyer_offer2) { Fabricate(:offer, order: order, amount_cents: 300, from_id: buyer_id, from_type: Order::USER, creator_id: buyer_id, created_at: 1.day.ago, shipping_total_cents: 100_00, tax_total_cents: 200_00) }
-    let(:seller_offer) { Fabricate(:offer, order: order, amount_cents: 200, from_id: seller_id, from_type: 'gallery', creator_id: seller_user_id, submitted_at: Date.new(2018, 1, 2)) }
+    let(:buyer_offer1) do
+      Fabricate(
+        :offer,
+        order: order,
+        amount_cents: 200,
+        from_id: buyer_id,
+        from_type: Order::USER,
+        creator_id: buyer_id,
+        submitted_at: 2.days.ago,
+        created_at: 2.days.ago
+      )
+    end
+    let(:buyer_offer2) do
+      Fabricate(
+        :offer,
+        order: order,
+        amount_cents: 300,
+        from_id: buyer_id,
+        from_type: Order::USER,
+        creator_id: buyer_id,
+        created_at: 1.day.ago,
+        shipping_total_cents: 100_00,
+        tax_total_cents: 200_00
+      )
+    end
+    let(:seller_offer) do
+      Fabricate(
+        :offer,
+        order: order,
+        amount_cents: 200,
+        from_id: seller_id,
+        from_type: 'gallery',
+        creator_id: seller_user_id,
+        submitted_at: Date.new(2_018, 1, 2)
+      )
+    end
     let(:query) do
       <<-GRAPHQL
         query($id: ID) {
@@ -74,14 +107,22 @@ describe Api::GraphqlController, type: :request do
         end
         it 'returns current pending offer for myLastOffer' do
           expect(@result.data.order.my_last_offer.id).to eq buyer_offer2.id
-          expect(@result.data.order.my_last_offer.shipping_total_cents).to eq 100_00
+          expect(
+            @result.data.order.my_last_offer.shipping_total_cents
+          ).to eq 100_00
           expect(@result.data.order.my_last_offer.tax_total_cents).to eq 200_00
         end
         it 'returns all submitted offers for order.offers' do
           expect(@result.data.order.offers.edges.count).to eq 2
-          expect(@result.data.order.offers.edges.map(&:node).map(&:id)).to match_array [buyer_offer1.id, seller_offer.id]
-          expect(@result.data.order.offers.edges.first.node.from_participant).to eq 'SELLER'
-          expect(@result.data.order.offers.edges.last.node.from_participant).to eq 'BUYER'
+          expect(
+            @result.data.order.offers.edges.map(&:node).map(&:id)
+          ).to match_array [buyer_offer1.id, seller_offer.id]
+          expect(
+            @result.data.order.offers.edges.first.node.from_participant
+          ).to eq 'SELLER'
+          expect(
+            @result.data.order.offers.edges.last.node.from_participant
+          ).to eq 'BUYER'
         end
       end
     end

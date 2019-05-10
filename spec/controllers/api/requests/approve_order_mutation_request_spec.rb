@@ -45,32 +45,32 @@ describe Api::GraphqlController, type: :request do
       GRAPHQL
     end
 
-    let(:approve_order_input) do
-      {
-        input: {
-          id: order.id.to_s
-        }
-      }
-    end
+    let(:approve_order_input) { { input: { id: order.id.to_s } } }
 
     context 'with user without permission to this partner' do
       let(:seller_id) { 'another-partner-id' }
       it 'returns permission error' do
         response = client.execute(mutation, approve_order_input)
-        expect(response.data.approve_order.order_or_error.error.type).to eq 'validation'
-        expect(response.data.approve_order.order_or_error.error.code).to eq 'not_found'
+        expect(
+          response.data.approve_order.order_or_error.error.type
+        ).to eq 'validation'
+        expect(
+          response.data.approve_order.order_or_error.error.code
+        ).to eq 'not_found'
         expect(order.reload.state).to eq Order::PENDING
       end
     end
 
     context 'with order not in submitted state' do
-      before do
-        order.update_attributes! state: Order::PENDING
-      end
+      before { order.update_attributes! state: Order::PENDING }
       it 'returns error' do
         response = client.execute(mutation, approve_order_input)
-        expect(response.data.approve_order.order_or_error.error.type).to eq 'validation'
-        expect(response.data.approve_order.order_or_error.error.code).to eq 'invalid_state'
+        expect(
+          response.data.approve_order.order_or_error.error.type
+        ).to eq 'validation'
+        expect(
+          response.data.approve_order.order_or_error.error.code
+        ).to eq 'invalid_state'
         expect(order.reload.state).to eq Order::PENDING
       end
     end
@@ -81,25 +81,42 @@ describe Api::GraphqlController, type: :request do
         order.update_attributes! external_charge_id: uncaptured_charge.id
       end
       it 'approves the order' do
-        expect do
+        expect {
           response = client.execute(mutation, approve_order_input)
-          expect(response.data.approve_order.order_or_error.order.id).to eq order.id.to_s
-          expect(response.data.approve_order.order_or_error.order.state).to eq 'APPROVED'
-          expect(response.data.approve_order.order_or_error).not_to respond_to(:error)
+          expect(
+            response.data.approve_order.order_or_error.order.id
+          ).to eq order.id.to_s
+          expect(
+            response.data.approve_order.order_or_error.order.state
+          ).to eq 'APPROVED'
+          expect(response.data.approve_order.order_or_error).not_to respond_to(
+                                                                      :error
+                                                                    )
           expect(order.reload.state).to eq Order::APPROVED
-          expect(order.reload.transactions.last.external_id).to eq uncaptured_charge.id
-          expect(order.reload.transactions.last.transaction_type).to eq Transaction::CAPTURE
-        end.to change(order, :state_expires_at)
+          expect(
+            order.reload.transactions.last.external_id
+          ).to eq uncaptured_charge.id
+          expect(
+            order.reload.transactions.last.transaction_type
+          ).to eq Transaction::CAPTURE
+        }.to change(order, :state_expires_at)
       end
 
       it 'queues a job for posting events' do
         client.execute(mutation, approve_order_input)
-        expect(PostEventJob).to have_been_enqueued.with('commerce', kind_of(String), 'order.approved')
+        expect(PostEventJob).to have_been_enqueued.with(
+          'commerce',
+          kind_of(String),
+          'order.approved'
+        )
       end
 
       it 'queues a job for rejecting the order when the order should expire' do
         client.execute(mutation, approve_order_input)
-        job = ActiveJob::Base.queue_adapter.enqueued_jobs.detect { |j| j[:job] == OrderFollowUpJob }
+        job =
+          ActiveJob::Base.queue_adapter.enqueued_jobs.detect do |j|
+            j[:job] == OrderFollowUpJob
+          end
         expect(job).to_not be_nil
         expect(job[:at].to_i).to eq order.reload.state_expires_at.to_i
         expect(job[:args][0]).to eq order.id

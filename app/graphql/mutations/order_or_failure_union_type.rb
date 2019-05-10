@@ -10,7 +10,8 @@ end
 
 class Mutations::OrderOrFailureUnionType < Types::BaseUnion
   description 'Represents either a resolved Order or a potential failure'
-  possible_types Mutations::OrderWithMutationSuccess, Mutations::OrderWithMutationFailure
+  possible_types Mutations::OrderWithMutationSuccess,
+                 Mutations::OrderWithMutationFailure
 
   def self.resolve_type(object, _context)
     if object.key?(:order)

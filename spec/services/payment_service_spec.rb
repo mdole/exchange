@@ -8,7 +8,12 @@ describe PaymentService, type: :services do
   let(:currency_code) { 'usd' }
   let(:buyer_amount) { 20_00 }
   let(:seller_amount) { 10_00 }
-  let(:credit_card) { { external_id: stripe_customer.default_source, customer_account: { external_id: stripe_customer.id } } }
+  let(:credit_card) do
+    {
+      external_id: stripe_customer.default_source,
+      customer_account: { external_id: stripe_customer.id }
+    }
+  end
   let(:merchant_account) { { external_id: 'ma-1' } }
   let(:params) do
     {
@@ -49,14 +54,16 @@ describe PaymentService, type: :services do
 
   describe '#capture_authorized_charge' do
     it 'captures a charge' do
-      transaction = PaymentService.capture_authorized_charge(uncaptured_charge.id)
+      transaction =
+        PaymentService.capture_authorized_charge(uncaptured_charge.id)
       expect(transaction.amount_cents).to eq(uncaptured_charge.amount)
       expect(transaction.transaction_type).to eq Transaction::CAPTURE
       expect(transaction.status).to eq Transaction::SUCCESS
     end
     it 'catches Stripe errors and returns a failed transaction' do
       StripeMock.prepare_card_error(:card_declined, :capture_charge)
-      transaction = PaymentService.capture_authorized_charge(uncaptured_charge.id)
+      transaction =
+        PaymentService.capture_authorized_charge(uncaptured_charge.id)
       expect(transaction.external_id).to eq uncaptured_charge.id
       expect(transaction.failure_code).to eq 'card_declined'
       expect(transaction.failure_message).to eq 'The card was declined'
@@ -78,7 +85,9 @@ describe PaymentService, type: :services do
       transaction = PaymentService.refund_charge(captured_charge.id)
       expect(transaction.external_id).to eq captured_charge.id
       expect(transaction.failure_code).to eq 'processing_error'
-      expect(transaction.failure_message).to eq 'An error occurred while processing the card'
+      expect(
+        transaction.failure_message
+      ).to eq 'An error occurred while processing the card'
       expect(transaction.transaction_type).to eq Transaction::REFUND
       expect(transaction.status).to eq Transaction::FAILURE
     end

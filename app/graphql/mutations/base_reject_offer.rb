@@ -4,7 +4,10 @@ class Mutations::BaseRejectOffer < Mutations::BaseMutation
   argument :offer_id, ID, required: true
   argument :reject_reason, Types::CancelReasonTypeEnum, required: false
 
-  field :order_or_error, Mutations::OrderOrFailureUnionType, 'A union of success/failure', null: false
+  field :order_or_error,
+        Mutations::OrderOrFailureUnionType,
+        'A union of success/failure',
+        null: false
 
   def resolve(offer_id:, reject_reason: nil)
     offer = Offer.find(offer_id)
@@ -14,13 +17,19 @@ class Mutations::BaseRejectOffer < Mutations::BaseMutation
 
     # should check whether or not it's an offer-mode order
     raise Errors::ValidationError, :not_last_offer unless offer.last_offer?
-    raise Errors::ValidationError, :cannot_reject_offer unless waiting_for_response?(offer)
+    unless waiting_for_response?(offer)
+      raise Errors::ValidationError, :cannot_reject_offer
+    end
 
-    OrderCancellationService.new(offer.order, current_user_id).reject!(sanitize_reject_reason(reject_reason))
+    OrderCancellationService.new(offer.order, current_user_id).reject!(
+      sanitize_reject_reason(reject_reason)
+    )
 
     { order_or_error: { order: order } }
   rescue Errors::ApplicationError => e
-    { order_or_error: { error: Types::ApplicationErrorType.from_application(e) } }
+    {
+      order_or_error: { error: Types::ApplicationErrorType.from_application(e) }
+    }
   end
 
   def authorize!(_order)

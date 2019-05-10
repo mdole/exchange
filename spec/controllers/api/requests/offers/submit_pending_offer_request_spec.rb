@@ -10,8 +10,23 @@ describe Api::GraphqlController, type: :request do
     let(:artwork) { gravity_v1_artwork(_id: 'a-1', current_version_id: '1') }
     let(:line_item_artwork_version) { artwork[:current_version_id] }
     let(:credit_card_id) { 'grav_c_id1' }
-    let(:credit_card) { { external_id: 'cc-1', customer_account: { external_id: 'cus-1' }, deactivated_at: nil } }
-    let(:line_item) { Fabricate(:line_item, order: order, list_price_cents: 2000_00, artwork_id: artwork[:_id], artwork_version_id: line_item_artwork_version, quantity: 2) }
+    let(:credit_card) do
+      {
+        external_id: 'cc-1',
+        customer_account: { external_id: 'cus-1' },
+        deactivated_at: nil
+      }
+    end
+    let(:line_item) do
+      Fabricate(
+        :line_item,
+        order: order,
+        list_price_cents: 2000_00,
+        artwork_id: artwork[:_id],
+        artwork_version_id: line_item_artwork_version,
+        quantity: 2
+      )
+    end
     let(:order_state) { Order::SUBMITTED }
     let(:order) do
       Fabricate(
@@ -34,8 +49,27 @@ describe Api::GraphqlController, type: :request do
         buyer_total_cents: 1000_00
       )
     end
-    let(:current_offer) { Fabricate(:offer, order: order, from_id: seller_id, from_type: 'gallery', amount_cents: 300) }
-    let(:counter_offer) { Fabricate(:offer, order: order, from_id: buyer_id, from_type: Order::USER, amount_cents: 350, tax_total_cents: 10, shipping_total_cents: 15, responds_to: current_offer) }
+    let(:current_offer) do
+      Fabricate(
+        :offer,
+        order: order,
+        from_id: seller_id,
+        from_type: 'gallery',
+        amount_cents: 300
+      )
+    end
+    let(:counter_offer) do
+      Fabricate(
+        :offer,
+        order: order,
+        from_id: buyer_id,
+        from_type: Order::USER,
+        amount_cents: 350,
+        tax_total_cents: 10,
+        shipping_total_cents: 15,
+        responds_to: current_offer
+      )
+    end
     let(:mutation) do
       <<-GRAPHQL
         mutation($input: SubmitPendingOfferInput!) {
@@ -66,13 +100,7 @@ describe Api::GraphqlController, type: :request do
       GRAPHQL
     end
 
-    let(:mutation_input) do
-      {
-        input: {
-          offerId: counter_offer.id.to_s
-        }
-      }
-    end
+    let(:mutation_input) { { input: { offerId: counter_offer.id.to_s } } }
 
     before do
       order.line_items << line_item
@@ -84,34 +112,60 @@ describe Api::GraphqlController, type: :request do
         counter_offer.update!(from_id: 'random-user-id-on-another-order')
 
         response = client.execute(mutation, mutation_input)
-        expect(response.data.submit_pending_offer.order_or_error).not_to respond_to(:order)
-        expect(response.data.submit_pending_offer.order_or_error.error.code).to eq 'not_found'
-        expect(response.data.submit_pending_offer.order_or_error.error.type).to eq 'validation'
+        expect(
+          response.data.submit_pending_offer.order_or_error
+        ).not_to respond_to(:order)
+        expect(
+          response.data.submit_pending_offer.order_or_error.error.code
+        ).to eq 'not_found'
+        expect(
+          response.data.submit_pending_offer.order_or_error.error.type
+        ).to eq 'validation'
       end
 
       it 'if the offer has already been submitted' do
-        allow(Gravity).to receive(:get_artwork).with(artwork[:_id]).and_return(artwork)
-        allow(Gravity).to receive(:get_credit_card).with(credit_card_id).and_return(credit_card)
+        allow(Gravity).to receive(:get_artwork).with(artwork[:_id]).and_return(
+          artwork
+        )
+        allow(Gravity).to receive(:get_credit_card).with(credit_card_id)
+          .and_return(credit_card)
         counter_offer.update!(submitted_at: Time.now.utc)
 
         response = client.execute(mutation, mutation_input)
-        expect(response.data.submit_pending_offer.order_or_error).not_to respond_to(:order)
-        expect(response.data.submit_pending_offer.order_or_error.error.code).to eq 'invalid_offer'
-        expect(response.data.submit_pending_offer.order_or_error.error.type).to eq 'validation'
+        expect(
+          response.data.submit_pending_offer.order_or_error
+        ).not_to respond_to(:order)
+        expect(
+          response.data.submit_pending_offer.order_or_error.error.code
+        ).to eq 'invalid_offer'
+        expect(
+          response.data.submit_pending_offer.order_or_error.error.type
+        ).to eq 'validation'
       end
     end
 
     describe 'successful mutations' do
       before do
-        allow(Gravity).to receive(:get_artwork).with(artwork[:_id]).and_return(artwork)
-        allow(Gravity).to receive(:get_credit_card).with(credit_card_id).and_return(credit_card)
-        allow(Adapters::GravityV1).to receive(:get).with("/partner/#{seller_id}/all").and_return(gravity_v1_partner)
-        allow(Adapters::GravityV1).to receive(:get).with("/artwork/#{line_item.artwork_id}").and_return(artwork)
+        allow(Gravity).to receive(:get_artwork).with(artwork[:_id]).and_return(
+          artwork
+        )
+        allow(Gravity).to receive(:get_credit_card).with(credit_card_id)
+          .and_return(credit_card)
+        allow(Adapters::GravityV1).to receive(:get).with(
+          "/partner/#{seller_id}/all"
+        )
+          .and_return(gravity_v1_partner)
+        allow(Adapters::GravityV1).to receive(:get).with(
+          "/artwork/#{line_item.artwork_id}"
+        )
+          .and_return(artwork)
       end
 
       it 'submits the order and updates submitted_at on the offer' do
         response = client.execute(mutation, mutation_input)
-        expect(response.data.submit_pending_offer.order_or_error).not_to respond_to(:error)
+        expect(
+          response.data.submit_pending_offer.order_or_error
+        ).not_to respond_to(:error)
         expect(counter_offer.reload.submitted_at).not_to be_nil
         expect(order.reload.last_offer).to eq counter_offer
       end

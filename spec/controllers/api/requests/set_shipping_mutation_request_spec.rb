@@ -8,17 +8,45 @@ describe Api::GraphqlController, type: :request do
     let(:seller_id) { jwt_partner_ids.first }
     let(:user_id) { jwt_user_id }
     let(:order) { Fabricate(:order, seller_id: seller_id, buyer_id: user_id) }
-    let!(:line_items) { [Fabricate(:line_item, order: order, artwork_id: 'a-1'), Fabricate(:line_item, order: order, artwork_id: 'a-2')] }
-    let(:artwork1) { gravity_v1_artwork(_id: 'a-1', domestic_shipping_fee_cents: 200_00, international_shipping_fee_cents: 300_00) }
-    let(:artwork2) { gravity_v1_artwork(_id: 'a-2', domestic_shipping_fee_cents: 400_00, international_shipping_fee_cents: 500_00) }
+    let!(:line_items) do
+      [
+        Fabricate(:line_item, order: order, artwork_id: 'a-1'),
+        Fabricate(:line_item, order: order, artwork_id: 'a-2')
+      ]
+    end
+    let(:artwork1) do
+      gravity_v1_artwork(
+        _id: 'a-1',
+        domestic_shipping_fee_cents: 200_00,
+        international_shipping_fee_cents: 300_00
+      )
+    end
+    let(:artwork2) do
+      gravity_v1_artwork(
+        _id: 'a-2',
+        domestic_shipping_fee_cents: 400_00,
+        international_shipping_fee_cents: 500_00
+      )
+    end
     let(:shipping_country) { 'US' }
     let(:shipping_region) { 'NY' }
     let(:shipping_postal_code) { '10012' }
     let(:fulfillment_type) { 'SHIP' }
-    let(:total_sales_tax) { 2222 }
+    let(:total_sales_tax) { 2_222 }
     let(:phone_number) { '00123456789' }
-    let(:partner) { { id: seller_id, artsy_collects_sales_tax: true, billing_location_id: '123abc' } }
-    let(:seller_addresses) { [Address.new(state: 'NY', country: 'US', postal_code: '10001'), Address.new(state: 'MA', country: 'US', postal_code: '02139')] }
+    let(:partner) do
+      {
+        id: seller_id,
+        artsy_collects_sales_tax: true,
+        billing_location_id: '123abc'
+      }
+    end
+    let(:seller_addresses) do
+      [
+        Address.new(state: 'NY', country: 'US', postal_code: '10001'),
+        Address.new(state: 'MA', country: 'US', postal_code: '02139')
+      ]
+    end
     let(:untaxable_seller_address) { [Address.new(country: 'FR')] }
 
     let(:mutation) do
@@ -86,29 +114,33 @@ describe Api::GraphqlController, type: :request do
       }
     end
 
-    before do
-      stub_tax_for_order
-    end
+    before { stub_tax_for_order }
 
     context 'with user without permission to this order' do
       let(:user_id) { 'random-user-id-on-another-order' }
       it 'returns permission error' do
         response = client.execute(mutation, set_shipping_input)
-        expect(response.data.set_shipping.order_or_error.error.type).to eq 'validation'
-        expect(response.data.set_shipping.order_or_error.error.code).to eq 'not_found'
+        expect(
+          response.data.set_shipping.order_or_error.error.type
+        ).to eq 'validation'
+        expect(
+          response.data.set_shipping.order_or_error.error.code
+        ).to eq 'not_found'
         expect(order.reload.state).to eq Order::PENDING
       end
     end
 
     context 'with proper permission' do
       context 'with order in non-pending state' do
-        before do
-          order.update! state: Order::APPROVED
-        end
+        before { order.update! state: Order::APPROVED }
         it 'returns error' do
           response = client.execute(mutation, set_shipping_input)
-          expect(response.data.set_shipping.order_or_error.error.type).to eq 'validation'
-          expect(response.data.set_shipping.order_or_error.error.code).to eq 'invalid_state'
+          expect(
+            response.data.set_shipping.order_or_error.error.type
+          ).to eq 'validation'
+          expect(
+            response.data.set_shipping.order_or_error.error.code
+          ).to eq 'invalid_state'
           expect(order.reload.state).to eq Order::APPROVED
         end
       end
@@ -117,17 +149,26 @@ describe Api::GraphqlController, type: :request do
         let(:shipping_address) { nil }
         let(:fulfillment_type) { 'PICKUP' }
         before do
-          allow(Adapters::GravityV1).to receive(:get).with('/artwork/a-1').and_return(artwork1)
-          allow(Adapters::GravityV1).to receive(:get).with('/artwork/a-2').and_return(artwork2)
+          allow(Adapters::GravityV1).to receive(:get).with('/artwork/a-1')
+            .and_return(artwork1)
+          allow(Adapters::GravityV1).to receive(:get).with('/artwork/a-2')
+            .and_return(artwork2)
           allow(Gravity).to receive_messages(
-            fetch_partner_locations: seller_addresses,
-            fetch_partner: partner
+            fetch_partner_locations: seller_addresses, fetch_partner: partner
           )
           @response = client.execute(mutation, set_shipping_input)
         end
         it 'sets fulfillment_type on the order' do
-          expect(@response.data.set_shipping.order_or_error.order.requested_fulfillment.__typename).to eq 'Pickup'
-          expect(@response.data.set_shipping.order_or_error.order.requested_fulfillment.fulfillment_type).to eq Order::PICKUP
+          expect(
+            @response.data.set_shipping.order_or_error.order
+              .requested_fulfillment
+              .__typename
+          ).to eq 'Pickup'
+          expect(
+            @response.data.set_shipping.order_or_error.order
+              .requested_fulfillment
+              .fulfillment_type
+          ).to eq Order::PICKUP
           expect(order.reload.fulfillment_type).to eq Order::PICKUP
         end
         it 'calculates tax' do
@@ -138,41 +179,62 @@ describe Api::GraphqlController, type: :request do
           expect(order.reload.tax_total_cents).to eq 232
         end
         it 'sets shipping to 0' do
-          expect(@response.data.set_shipping.order_or_error.order.shipping_total_cents).to eq 0
+          expect(
+            @response.data.set_shipping.order_or_error.order
+              .shipping_total_cents
+          ).to eq 0
           expect(order.reload.shipping_total_cents).to eq 0
         end
       end
       context 'Ship Order' do
-        before do
-          allow(Gravity).to receive(:fetch_partner).and_return(partner)
-        end
+        before { allow(Gravity).to receive(:fetch_partner).and_return(partner) }
         context 'without passing phone number' do
           let(:phone_number) { nil }
           it 'fails' do
-            expect do
+            expect {
               client.execute(mutation, set_shipping_input)
-            end.to raise_error(/phoneNumber: Expected value to not be null/)
+            }.to raise_error(/phoneNumber: Expected value to not be null/)
           end
         end
 
         context 'with no partner locations' do
           before do
-            allow(Adapters::GravityV1).to receive(:get).with('/artwork/a-1').and_return(artwork1)
-            allow(Adapters::GravityV1).to receive(:get).with('/artwork/a-2').and_return(artwork2)
-            allow(Adapters::GravityV1).to receive(:get).with("/partner/#{seller_id}/locations", params: { private: true, address_type: ['Business', 'Sales tax nexus'] }).and_return([])
+            allow(Adapters::GravityV1).to receive(:get).with('/artwork/a-1')
+              .and_return(artwork1)
+            allow(Adapters::GravityV1).to receive(:get).with('/artwork/a-2')
+              .and_return(artwork2)
+            allow(Adapters::GravityV1).to receive(:get).with(
+              "/partner/#{seller_id}/locations",
+              params: {
+                private: true, address_type: ['Business', 'Sales tax nexus']
+              }
+            )
+              .and_return([])
           end
           it 'raises an error' do
             response = client.execute(mutation, set_shipping_input)
-            expect(response.data.set_shipping.order_or_error.error.type).to eq 'validation'
-            expect(response.data.set_shipping.order_or_error.error.code).to eq 'missing_partner_location'
+            expect(
+              response.data.set_shipping.order_or_error.error.type
+            ).to eq 'validation'
+            expect(
+              response.data.set_shipping.order_or_error.error.code
+            ).to eq 'missing_partner_location'
           end
         end
 
         context 'with untaxable partner locations' do
           before do
-            allow(Adapters::GravityV1).to receive(:get).with('/artwork/a-1').and_return(artwork1)
-            allow(Adapters::GravityV1).to receive(:get).with('/artwork/a-2').and_return(artwork2)
-            allow(Adapters::GravityV1).to receive(:get).with("/partner/#{seller_id}/locations", params: { private: true, address_type: ['Business', 'Sales tax nexus'] }).and_return([{ country: 'FR' }])
+            allow(Adapters::GravityV1).to receive(:get).with('/artwork/a-1')
+              .and_return(artwork1)
+            allow(Adapters::GravityV1).to receive(:get).with('/artwork/a-2')
+              .and_return(artwork2)
+            allow(Adapters::GravityV1).to receive(:get).with(
+              "/partner/#{seller_id}/locations",
+              params: {
+                private: true, address_type: ['Business', 'Sales tax nexus']
+              }
+            )
+              .and_return([{ country: 'FR' }])
           end
           it 'sets sales tax to 0 and should_remit_sales_tax to false on each line item' do
             client.execute(mutation, set_shipping_input)
@@ -187,34 +249,66 @@ describe Api::GraphqlController, type: :request do
         context 'with a shipping address with an unrecognized country' do
           let(:shipping_country) { 'ASDF' }
           before do
-            allow(Adapters::GravityV1).to receive(:get).with('/artwork/a-1').and_return(artwork1)
-            allow(Adapters::GravityV1).to receive(:get).with('/artwork/a-2').and_return(artwork2)
-            allow(Adapters::GravityV1).to receive(:get).with("/partner/#{seller_id}/locations", params: { private: true, address_type: ['Business', 'Sales tax nexus'] }).and_return([{ country: 'FR' }])
+            allow(Adapters::GravityV1).to receive(:get).with('/artwork/a-1')
+              .and_return(artwork1)
+            allow(Adapters::GravityV1).to receive(:get).with('/artwork/a-2')
+              .and_return(artwork2)
+            allow(Adapters::GravityV1).to receive(:get).with(
+              "/partner/#{seller_id}/locations",
+              params: {
+                private: true, address_type: ['Business', 'Sales tax nexus']
+              }
+            )
+              .and_return([{ country: 'FR' }])
           end
           it 'returns proper error' do
             response = client.execute(mutation, set_shipping_input)
-            expect(response.data.set_shipping.order_or_error).to respond_to(:error)
-            expect(response.data.set_shipping.order_or_error.error.type).to eq 'validation'
-            expect(response.data.set_shipping.order_or_error.error.code).to eq 'missing_country'
+            expect(response.data.set_shipping.order_or_error).to respond_to(
+              :error
+            )
+            expect(
+              response.data.set_shipping.order_or_error.error.type
+            ).to eq 'validation'
+            expect(
+              response.data.set_shipping.order_or_error.error.code
+            ).to eq 'missing_country'
           end
         end
 
         context 'with a US-based shipping address' do
           before do
-            allow(Adapters::GravityV1).to receive(:get).with('/artwork/a-1').and_return(artwork1)
-            allow(Adapters::GravityV1).to receive(:get).with('/artwork/a-2').and_return(artwork2)
-            allow(Adapters::GravityV1).to receive(:get).with("/partner/#{seller_id}/locations", params: { private: true, address_type: ['Business', 'Sales tax nexus'] }).and_return([{ country: 'US', state: 'NY' }])
+            allow(Adapters::GravityV1).to receive(:get).with('/artwork/a-1')
+              .and_return(artwork1)
+            allow(Adapters::GravityV1).to receive(:get).with('/artwork/a-2')
+              .and_return(artwork2)
+            allow(Adapters::GravityV1).to receive(:get).with(
+              "/partner/#{seller_id}/locations",
+              params: {
+                private: true, address_type: ['Business', 'Sales tax nexus']
+              }
+            )
+              .and_return([{ country: 'US', state: 'NY' }])
           end
           let(:shipping_country) { 'US' }
           context 'without a state' do
             let(:shipping_region) { nil }
             it 'returns proper error' do
               response = client.execute(mutation, set_shipping_input)
-              expect(response.data.set_shipping.order_or_error).to respond_to(:error)
-              expect(response.data.set_shipping.order_or_error.error.type).to eq 'validation'
-              expect(response.data.set_shipping.order_or_error.error.code).to eq 'missing_region'
-              expect(response.data.set_shipping.order_or_error.error.data).to include order.id
-              expect(response.data.set_shipping.order_or_error.error.data).to include 'a-1'
+              expect(response.data.set_shipping.order_or_error).to respond_to(
+                :error
+              )
+              expect(
+                response.data.set_shipping.order_or_error.error.type
+              ).to eq 'validation'
+              expect(
+                response.data.set_shipping.order_or_error.error.code
+              ).to eq 'missing_region'
+              expect(
+                response.data.set_shipping.order_or_error.error.data
+              ).to include order.id
+              expect(
+                response.data.set_shipping.order_or_error.error.data
+              ).to include 'a-1'
             end
           end
           context 'without a postal code' do
@@ -222,42 +316,84 @@ describe Api::GraphqlController, type: :request do
             let(:shipping_postal_code) { nil }
             it 'returns proper error' do
               response = client.execute(mutation, set_shipping_input)
-              expect(response.data.set_shipping.order_or_error).to respond_to(:error)
-              expect(response.data.set_shipping.order_or_error.error.type).to eq 'validation'
-              expect(response.data.set_shipping.order_or_error.error.code).to eq 'missing_postal_code'
+              expect(response.data.set_shipping.order_or_error).to respond_to(
+                :error
+              )
+              expect(
+                response.data.set_shipping.order_or_error.error.type
+              ).to eq 'validation'
+              expect(
+                response.data.set_shipping.order_or_error.error.code
+              ).to eq 'missing_postal_code'
             end
           end
         end
 
         context 'with artwork with missing location' do
           it 'returns an error' do
-            allow(Adapters::GravityV1).to receive(:get).with("/partner/#{seller_id}/locations", params: { private: true, address_type: ['Business', 'Sales tax nexus'] }).and_return([{ country: 'US', state: 'NY' }])
-            allow(Adapters::GravityV1).to receive(:get).with('/artwork/a-1').and_return(id: 'missing-location')
+            allow(Adapters::GravityV1).to receive(:get).with(
+              "/partner/#{seller_id}/locations",
+              params: {
+                private: true, address_type: ['Business', 'Sales tax nexus']
+              }
+            )
+              .and_return([{ country: 'US', state: 'NY' }])
+            allow(Adapters::GravityV1).to receive(:get).with('/artwork/a-1')
+              .and_return(id: 'missing-location')
             response = client.execute(mutation, set_shipping_input)
-            expect(response.data.set_shipping.order_or_error.error.type).to eq 'validation'
-            expect(response.data.set_shipping.order_or_error.error.code).to eq 'missing_artwork_location'
+            expect(
+              response.data.set_shipping.order_or_error.error.type
+            ).to eq 'validation'
+            expect(
+              response.data.set_shipping.order_or_error.error.code
+            ).to eq 'missing_artwork_location'
           end
         end
 
         context 'with failed artwork fetch call' do
           it 'returns an error' do
-            allow(Adapters::GravityV1).to receive(:get).with("/partner/#{seller_id}/locations", params: { private: true, address_type: ['Business', 'Sales tax nexus'] }).and_return([{ country: 'US', state: 'NY' }])
-            allow(Adapters::GravityV1).to receive(:get).with('/artwork/a-1').and_raise(Adapters::GravityError.new('unknown artwork'))
+            allow(Adapters::GravityV1).to receive(:get).with(
+              "/partner/#{seller_id}/locations",
+              params: {
+                private: true, address_type: ['Business', 'Sales tax nexus']
+              }
+            )
+              .and_return([{ country: 'US', state: 'NY' }])
+            allow(Adapters::GravityV1).to receive(:get).with('/artwork/a-1')
+              .and_raise(Adapters::GravityError.new('unknown artwork'))
             response = client.execute(mutation, set_shipping_input)
-            expect(response.data.set_shipping.order_or_error.error.type).to eq 'validation'
-            expect(response.data.set_shipping.order_or_error.error.code).to eq 'unknown_artwork'
+            expect(
+              response.data.set_shipping.order_or_error.error.type
+            ).to eq 'validation'
+            expect(
+              response.data.set_shipping.order_or_error.error.code
+            ).to eq 'unknown_artwork'
           end
         end
 
         it 'sets shipping info and sales tax on the order' do
-          allow(Adapters::GravityV1).to receive(:get).with('/artwork/a-1').and_return(artwork1)
-          allow(Adapters::GravityV1).to receive(:get).with('/artwork/a-2').and_return(artwork2)
-          allow(Gravity).to receive(:fetch_partner_locations).and_return(seller_addresses)
+          allow(Adapters::GravityV1).to receive(:get).with('/artwork/a-1')
+            .and_return(artwork1)
+          allow(Adapters::GravityV1).to receive(:get).with('/artwork/a-2')
+            .and_return(artwork2)
+          allow(Gravity).to receive(:fetch_partner_locations).and_return(
+            seller_addresses
+          )
           response = client.execute(mutation, set_shipping_input)
-          expect(response.data.set_shipping.order_or_error.order.id).to eq order.id.to_s
-          expect(response.data.set_shipping.order_or_error.order.state).to eq 'PENDING'
-          expect(response.data.set_shipping.order_or_error).not_to respond_to(:error)
-          expect(response.data.set_shipping.order_or_error.order.requested_fulfillment.address_line1).to eq '401 Broadway'
+          expect(response.data.set_shipping.order_or_error.order.id).to eq order
+               .id
+               .to_s
+          expect(
+            response.data.set_shipping.order_or_error.order.state
+          ).to eq 'PENDING'
+          expect(response.data.set_shipping.order_or_error).not_to respond_to(
+                                                                     :error
+                                                                   )
+          expect(
+            response.data.set_shipping.order_or_error.order
+              .requested_fulfillment
+              .address_line1
+          ).to eq '401 Broadway'
           expect(order.reload.fulfillment_type).to eq Order::SHIP
           expect(order.state).to eq Order::PENDING
           expect(order.shipping_country).to eq 'US'
@@ -278,30 +414,46 @@ describe Api::GraphqlController, type: :request do
 
         describe '#shipping_total_cents' do
           before do
-            allow(Gravity).to receive(:fetch_partner_locations).and_return(seller_addresses)
+            allow(Gravity).to receive(:fetch_partner_locations).and_return(
+              seller_addresses
+            )
           end
           context 'with PICKUP as fulfillment type' do
             before do
-              expect(Adapters::GravityV1).to receive(:get).with('/artwork/a-1').and_return(artwork1)
-              expect(Adapters::GravityV1).to receive(:get).with('/artwork/a-2').and_return(artwork2)
+              expect(Adapters::GravityV1).to receive(:get).with('/artwork/a-1')
+                .and_return(artwork1)
+              expect(Adapters::GravityV1).to receive(:get).with('/artwork/a-2')
+                .and_return(artwork2)
             end
             let(:fulfillment_type) { 'PICKUP' }
             it 'sets total shipping cents to 0' do
               response = client.execute(mutation, set_shipping_input)
-              expect(response.data.set_shipping.order_or_error.order.shipping_total_cents).to eq 0
+              expect(
+                response.data.set_shipping.order_or_error.order
+                  .shipping_total_cents
+              ).to eq 0
               expect(order.reload.shipping_total_cents).to eq 0
             end
           end
           context 'with SHIP as fulfillment type' do
             before do
-              expect(Adapters::GravityV1).to receive(:get).once.with('/artwork/a-1').and_return(artwork1)
-              expect(Adapters::GravityV1).to receive(:get).once.with('/artwork/a-2').and_return(artwork2)
+              expect(Adapters::GravityV1).to receive(:get).once.with(
+                '/artwork/a-1'
+              )
+                .and_return(artwork1)
+              expect(Adapters::GravityV1).to receive(:get).once.with(
+                '/artwork/a-2'
+              )
+                .and_return(artwork2)
             end
             context 'with international shipping' do
               let(:shipping_country) { 'IR' }
               it 'sets total shipping cents properly' do
                 response = client.execute(mutation, set_shipping_input)
-                expect(response.data.set_shipping.order_or_error.order.shipping_total_cents).to eq 800_00
+                expect(
+                  response.data.set_shipping.order_or_error.order
+                    .shipping_total_cents
+                ).to eq 800_00
                 expect(order.reload.shipping_total_cents).to eq 800_00
               end
             end
@@ -309,16 +461,28 @@ describe Api::GraphqlController, type: :request do
             context 'with domestic shipping' do
               it 'sets total shipping cents properly' do
                 response = client.execute(mutation, set_shipping_input)
-                expect(response.data.set_shipping.order_or_error.order.shipping_total_cents).to eq 600_00
+                expect(
+                  response.data.set_shipping.order_or_error.order
+                    .shipping_total_cents
+                ).to eq 600_00
                 expect(order.reload.shipping_total_cents).to eq 600_00
               end
             end
 
             context 'with one free shipping artwork' do
-              let(:artwork1) { gravity_v1_artwork(_id: 'a-1', domestic_shipping_fee_cents: 0, international_shipping_fee_cents: 0) }
+              let(:artwork1) do
+                gravity_v1_artwork(
+                  _id: 'a-1',
+                  domestic_shipping_fee_cents: 0,
+                  international_shipping_fee_cents: 0
+                )
+              end
               it 'sets total shipping cents only based on non-free shipping artwork' do
                 response = client.execute(mutation, set_shipping_input)
-                expect(response.data.set_shipping.order_or_error.order.shipping_total_cents).to eq 400_00
+                expect(
+                  response.data.set_shipping.order_or_error.order
+                    .shipping_total_cents
+                ).to eq 400_00
                 expect(order.reload.shipping_total_cents).to eq 400_00
               end
             end

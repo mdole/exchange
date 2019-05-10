@@ -1,2 +1,1 @@
-Fabricator(:fulfillment) do
-end
+Fabricator(:fulfillment) {}

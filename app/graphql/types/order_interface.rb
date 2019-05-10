@@ -17,10 +17,16 @@ module Types::OrderInterface
   field :credit_card_id, String, null: true
   field :currency_code, String, null: false
   field :display_commission_rate, String, null: true
-  field :items_total_cents, Integer, null: true, description: 'Item total in cents, for Offer Orders this field reflects current offer'
+  field :items_total_cents,
+        Integer,
+        null: true,
+        description:
+          'Item total in cents, for Offer Orders this field reflects current offer'
   field :last_approved_at, Types::DateTimeType, null: true
   field :last_submitted_at, Types::DateTimeType, null: true
-  field :last_transaction_failed, Boolean, null: true, method: :last_transaction_failed?
+  field :last_transaction_failed,
+        Boolean,
+        null: true, method: :last_transaction_failed?
   field :line_items, Types::LineItemType.connection_type, null: true
   field :requested_fulfillment, Types::RequestedFulfillmentUnionType, null: true
   field :seller_total_cents, Integer, null: true, seller_only: true
@@ -39,22 +45,18 @@ module Types::OrderInterface
 
   def offers(**args)
     offers = object.offers.submitted
-    offers = offers.where(args.slice(:from_id, :from_type)) if args.keys.any? { |ar| %i[from_id from_type].include? ar }
+    if args.keys.any? { |ar| %i[from_id from_type].include? ar }
+      offers = offers.where(args.slice(:from_id, :from_type))
+    end
     offers
   end
 
   def buyer
-    OpenStruct.new(
-      id: object.buyer_id,
-      type: object.buyer_type
-    )
+    OpenStruct.new(id: object.buyer_id, type: object.buyer_type)
   end
 
   def seller
-    OpenStruct.new(
-      id: object.seller_id,
-      type: object.seller_type
-    )
+    OpenStruct.new(id: object.seller_id, type: object.seller_type)
   end
 
   def requested_fulfillment
@@ -71,8 +73,7 @@ module Types::OrderInterface
 
     ActiveSupport::NumberHelper.number_to_percentage(
       object.commission_rate * 100,
-      precision: 2,
-      strip_insignificant_zeros: true
+      precision: 2, strip_insignificant_zeros: true
     )
   end
 
@@ -81,8 +82,10 @@ module Types::OrderInterface
     # Optional: if this method is defined, it overrides `Schema.resolve_type`
     def resolve_type(object, _context)
       case object.mode
-      when Order::BUY then Types::BuyOrderType
-      when Order::OFFER then Types::OfferOrderType
+      when Order::BUY
+        Types::BuyOrderType
+      when Order::OFFER
+        Types::OfferOrderType
       else
         raise 'Unknown order type'
       end

@@ -1,41 +1,38 @@
-def gravity_v1_artwork(options={})
+def gravity_v1_artwork(options = {})
   {
     artist: {
-        _id: 'artist-id',
-        id: 'artist-slug',
-        name: 'BNMOsy',
-        years: 'born 1953',
-        public: true,
-        birthday: '1953',
-        consignable: true,
-        deathday: '',
-        nationality: 'American',
-        published_artworks_count: 382,
-        forsale_artworks_count: 221,
-        artworks_count: 502,
-        original_width: nil,
-        original_height: nil,
-        image_url: 'http:///:version.jpg',
-        image_versions: ['large', 'square'],
-        image_urls:
-          {
-            large: 'http://large.jpg',
-            square: 'http://square.jpg'
-          }
-      },
-      partner: {
-        partner_categories: [],
-        _id: 'gravity-partner-id',
-        id: 'gravity-partner-slug',
-        default_profile_id: 'defualt-profile-id',
-        default_profile_public: true,
-        sortable_id: 'sortable-id',
-        type: 'Gallery',
-        name: 'BNMO',
-        short_name: '',
-        website: 'http://www.BNMO.com'
-      },
-    images: [{
+      _id: 'artist-id',
+      id: 'artist-slug',
+      name: 'BNMOsy',
+      years: 'born 1953',
+      public: true,
+      birthday: '1953',
+      consignable: true,
+      deathday: '',
+      nationality: 'American',
+      published_artworks_count: 382,
+      forsale_artworks_count: 221,
+      artworks_count: 502,
+      original_width: nil,
+      original_height: nil,
+      image_url: 'http:///:version.jpg',
+      image_versions: %w[large square],
+      image_urls: { large: 'http://large.jpg', square: 'http://square.jpg' }
+    },
+    partner: {
+      partner_categories: [],
+      _id: 'gravity-partner-id',
+      id: 'gravity-partner-slug',
+      default_profile_id: 'defualt-profile-id',
+      default_profile_public: true,
+      sortable_id: 'sortable-id',
+      type: 'Gallery',
+      name: 'BNMO',
+      short_name: '',
+      website: 'http://www.BNMO.com'
+    },
+    images: [
+      {
         id: '54a08d8d7261692ce5c50300',
         position: 1,
         aspect_ratio: 0.69,
@@ -44,45 +41,39 @@ def gravity_v1_artwork(options={})
         original_height: 598,
         is_default: true,
         image_url:
-        'https://d32dm0rphc51dk.cloudfront.net/EdrogYFIC2iS0H4myfs1Kw/:version.jpg',
-        image_versions:
-        ['small',
-          'square',
-          'tall'],
-        image_urls:
-        {
-          small:
-          'https:///small.jpg',
-          square:
-          'https:///square.jpg',
-          tall:
-          'https:///tall.jpg'},
+          'https://d32dm0rphc51dk.cloudfront.net/EdrogYFIC2iS0H4myfs1Kw/:version.jpg',
+        image_versions: %w[small square tall],
+        image_urls: {
+          small: 'https:///small.jpg',
+          square: 'https:///square.jpg',
+          tall: 'https:///tall.jpg'
+        },
         tile_size: 512,
         tile_overlap: 0,
         tile_format: 'jpg',
-        tile_base_url:
-        'https:///dztiles',
+        tile_base_url: 'https:///dztiles',
         max_tiled_height: 598,
         max_tiled_width: 412
-      }],
-    edition_sets: [{
+      }
+    ],
+    edition_sets: [
+      {
         id: 'edition-set-id',
         forsale: true,
         sold: false,
         price: '$4200',
         price_listed: 4200.42,
-        price_currency: "USD",
+        price_currency: 'USD',
         acquireable: false,
-        dimensions: {in: '44 × 30 1/2 in', cm: '111.8 × 77.5 cm'},
+        dimensions: { in: '44 × 30 1/2 in', cm: '111.8 × 77.5 cm' },
         editions: 'Edition of 15',
         display_price_currency: 'USD (United States Dollar)',
         availability: 'for sale',
-        inventory: {
-          count: 1,
-          unlimited: false
-        },
-      }],
-    artists: [{
+        inventory: { count: 1, unlimited: false }
+      }
+    ],
+    artists: [
+      {
         _id: 'artist-id',
         id: 'artist-slug',
         sortable_id: 'longo-robert',
@@ -98,32 +89,26 @@ def gravity_v1_artwork(options={})
         artworks_count: 502,
         original_width: nil,
         original_height: nil,
-        image_url:
-        'https://.../:version.jpg',
-        image_versions: ['four_thirds', 'large', 'square', 'tall'],
-        image_urls:
-        {four_thirds:
-          'https://.../four_thirds.jpg',
-          large:
-          'https://.../large.jpg',
-          square:
-          'https://.../square.jpg',
-          tall:
-          'https://.../tall.jpg'}
-        }],
+        image_url: 'https://.../:version.jpg',
+        image_versions: %w[four_thirds large square tall],
+        image_urls: {
+          four_thirds: 'https://.../four_thirds.jpg',
+          large: 'https://.../large.jpg',
+          square: 'https://.../square.jpg',
+          tall: 'https://.../tall.jpg'
+        }
+      }
+    ],
     location: {
-        country: 'US',
-        city: 'Brooklyn',
-        state: 'NY',
-        address: '22 Fake St',
-        postal_code: 10013
-      },
+      country: 'US',
+      city: 'Brooklyn',
+      state: 'NY',
+      address: '22 Fake St',
+      postal_code: 10_013
+    },
     _id: 'artwork-id',
     id: 'artwork-slug',
-    inventory: {
-      count: 1,
-      unlimited: false
-    },
+    inventory: { count: 1, unlimited: false },
     current_version_id: 'current-version-id',
     title: 'Untitled Pl. 13 (from Men in the Cities)',
     display: 'BNMOsy, Untitled Pl. 13 (from Men in the Cities) (2005)',
@@ -134,7 +119,7 @@ def gravity_v1_artwork(options={})
     forsale: true,
     sold: false,
     date: '2005',
-    dimensions: {in: '44 × 30 1/2 in', cm: '111.8 × 77.5 cm'},
+    dimensions: { in: '44 × 30 1/2 in', cm: '111.8 × 77.5 cm' },
     price: '$5400',
     price_listed: 5400.12,
     series: '',
@@ -175,37 +160,37 @@ def gravity_v1_artwork(options={})
   }.merge(options)
 end
 
-def gravity_v1_partner(options={})
+def gravity_v1_partner(options = {})
   {
     admin: nil,
     outreach_admin: nil,
     referral_contact: nil,
     partner_categories: [],
     _id: '581b45e4cd530e658b000124',
-    id: "invoicing-demo-partner",
-    default_profile_id: "invoicing-demo-partner",
+    id: 'invoicing-demo-partner',
+    default_profile_id: 'invoicing-demo-partner',
     default_profile_public: false,
-    sortable_id: "invoicing-demo-partner",
-    type: "Gallery",
-    name: "Invoicing Demo Partner",
-    short_name: "",
+    sortable_id: 'invoicing-demo-partner',
+    type: 'Gallery',
+    name: 'Invoicing Demo Partner',
+    short_name: '',
     pre_qualify: false,
-    sortable_name: "",
-    given_name: "Invoicing Demo Partner",
-    display_name: "",
-    website: "http://gallery.com",
-    email: "info@gallery.com",
+    sortable_name: '',
+    given_name: 'Invoicing Demo Partner',
+    display_name: '',
+    website: 'http://gallery.com',
+    email: 'info@gallery.com',
     artists_count: 10,
     partner_artists_count: 10,
     artworks_count: 27,
     artsy_collects_sales_tax: true,
-    region: "",
-    subscription_state: "active",
-    alternate_names: ["Partner Success Invoicing Demo Partner"],
-    contract_type: "Subscription",
+    region: '',
+    subscription_state: 'active',
+    alternate_names: ['Partner Success Invoicing Demo Partner'],
+    contract_type: 'Subscription',
     billing_location_id: '581b46959c18db1dee001f50',
     payments_enabled: true,
     commission_rate: 0.7,
-    effective_commission_rate: 0.8,
+    effective_commission_rate: 0.8
   }.merge(options)
 end

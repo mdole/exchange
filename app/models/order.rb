@@ -6,15 +6,9 @@ class Order < ApplicationRecord
 
   DEFAULT_EXPIRATION_REMINDER = 5.hours
 
-  MODES = [
-    BUY = 'buy'.freeze,
-    OFFER = 'offer'.freeze
-  ].freeze
+  MODES = [BUY = 'buy'.freeze, OFFER = 'offer'.freeze].freeze
 
-  PARTICIPANTS = [
-    BUYER = 'buyer'.freeze,
-    SELLER = 'seller'.freeze
-  ].freeze
+  PARTICIPANTS = [BUYER = 'buyer'.freeze, SELLER = 'seller'.freeze].freeze
 
   PAYMENT_METHODS = [
     CREDIT_CARD = 'credit card'.freeze,
@@ -26,28 +20,36 @@ class Order < ApplicationRecord
   STATES = [
     PENDING = 'pending'.freeze,
     # Buyer starts checkout flow but never submits
-    ABANDONED = 'abandoned'.freeze,
+    ABANDONED =
+      'abandoned'.freeze,
     # Check-out complete; payment authorized.
     # Buyer credit card has been authorized and hold has been placed.
     # At this point, availability must be confirmed manually.
     # Holds expire 7 days after being placed.
-    SUBMITTED = 'submitted'.freeze,
+    SUBMITTED =
+      'submitted'.freeze,
     # Availability has been manually confirmed and hold has been "captured" (debited).
-    APPROVED = 'approved'.freeze,
+    APPROVED =
+      'approved'.freeze,
     # Items have been deemed unavailable and hold is voided.
-    CANCELED = 'canceled'.freeze,
+    CANCELED =
+      'canceled'.freeze,
     # Order is completely fulfilled by the seller
-    FULFILLED = 'fulfilled'.freeze,
+    FULFILLED =
+      'fulfilled'.freeze,
     # Order was refunded after approval/fulfillment
-    REFUNDED = 'refunded'.freeze
+    REFUNDED =
+      'refunded'.freeze
   ].freeze
 
   REASONS = {
     CANCELED => {
       seller_lapsed: 'seller_lapsed'.freeze,
       seller_rejected_offer_too_low: 'seller_rejected_offer_too_low'.freeze,
-      seller_rejected_shipping_unavailable: 'seller_rejected_shipping_unavailable'.freeze,
-      seller_rejected_artwork_unavailable: 'seller_rejected_artwork_unavailable'.freeze,
+      seller_rejected_shipping_unavailable:
+        'seller_rejected_shipping_unavailable'.freeze,
+      seller_rejected_artwork_unavailable:
+        'seller_rejected_artwork_unavailable'.freeze,
       seller_rejected_other: 'seller_rejected_other'.freeze,
       seller_rejected: 'seller_rejected'.freeze,
       buyer_rejected: 'buyer_rejected'.freeze,
@@ -56,27 +58,28 @@ class Order < ApplicationRecord
   }.freeze
 
   STATE_EXPIRATIONS = {
-    'pending' => 2.days,
-    'submitted' => 2.days,
-    'approved' => 7.days
+    'pending' => 2.days, 'submitted' => 2.days, 'approved' => 7.days
   }.freeze
 
-  FULFILLMENT_TYPES = [
-    PICKUP = 'pickup'.freeze,
-    SHIP = 'ship'.freeze
-  ].freeze
+  FULFILLMENT_TYPES = [PICKUP = 'pickup'.freeze, SHIP = 'ship'.freeze].freeze
 
-  ACTIONS = %i[abandon submit approve reject fulfill seller_lapse buyer_lapse refund].freeze
+  ACTIONS = %i[
+    abandon
+    submit
+    approve
+    reject
+    fulfill
+    seller_lapse
+    buyer_lapse
+    refund
+  ].freeze
   ACTION_REASONS = {
     seller_lapse: REASONS[CANCELED][:seller_lapsed],
     buyer_lapse: REASONS[CANCELED][:buyer_lapsed],
     reject: REASONS[CANCELED][:seller_rejected_other]
   }.freeze
 
-  PARTY_TYPES = [
-    USER = 'user'.freeze,
-    PARTNER = 'partner'.freeze
-  ].freeze
+  PARTY_TYPES = [USER = 'user'.freeze, PARTNER = 'partner'.freeze].freeze
 
   REMINDER_EVENT_VERB = {
     pending_approval: 'pending_approval'.freeze,
@@ -92,7 +95,9 @@ class Order < ApplicationRecord
   has_many :offers, dependent: :destroy
   belongs_to :last_offer, class_name: 'Offer', optional: true
 
-  before_validation { self.currency_code = currency_code.upcase if currency_code.present? }
+  before_validation do
+    self.currency_code = currency_code.upcase if currency_code.present?
+  end
 
   validates :state, presence: true, inclusion: STATES
   validate :state_reason_inclusion
@@ -107,7 +112,13 @@ class Order < ApplicationRecord
   scope :pending, -> { where(state: PENDING) }
   scope :active, -> { where(state: [Order::APPROVED, Order::SUBMITTED]) }
   scope :approved, -> { where(state: APPROVED) }
-  scope :by_last_admin_note, ->(note_types) { where('(SELECT note_type FROM admin_notes WHERE order_id = orders.id ORDER BY created_at DESC limit 1) in (?)', note_types) }
+  scope :by_last_admin_note,
+        lambda { |note_types|
+          where(
+            '(SELECT note_type FROM admin_notes WHERE order_id = orders.id ORDER BY created_at DESC limit 1) in (?)',
+            note_types
+          )
+        }
 
   ACTIONS.each do |action|
     define_method "#{action}!" do |state_reason = nil, &block|
@@ -127,11 +138,11 @@ class Order < ApplicationRecord
     artwork_ids = line_items.select(:artwork_id)
     edition_set_ids = line_items.select(:edition_set_id)
 
-    Order
-      .joins(:line_items)
-      .where.not(id: id)
-      .where(state: SUBMITTED)
-      .where('(line_items.artwork_id IN (?) OR line_items.edition_set_id IN (?))', artwork_ids, edition_set_ids)
+    Order.joins(:line_items).where.not(id: id).where(state: SUBMITTED).where(
+      '(line_items.artwork_id IN (?) OR line_items.edition_set_id IN (?))',
+      artwork_ids,
+      edition_set_ids
+    )
       .order(created_at: :asc)
   end
 
@@ -195,7 +206,9 @@ class Order < ApplicationRecord
     last_offer&.awaiting_response_from
   end
 
-  def state_expiration_reminder_time(time_to_expiration = DEFAULT_EXPIRATION_REMINDER)
+  def state_expiration_reminder_time(
+    time_to_expiration = DEFAULT_EXPIRATION_REMINDER
+  )
     state_expires_at - time_to_expiration
   end
 
@@ -206,25 +219,36 @@ class Order < ApplicationRecord
   private
 
   def state_reason_inclusion
-    errors.add(:state_reason, "Current state not expecting reason: #{state}") if state_reason.present? && !REASONS.key?(state)
-    errors.add(:state_reason, 'Invalid state reason') if REASONS[state] && !REASONS[state].value?(state_reason)
+    if state_reason.present? && !REASONS.key?(state)
+      errors.add(:state_reason, "Current state not expecting reason: #{state}")
+    end
+    if REASONS[state] && !REASONS[state].value?(state_reason)
+      errors.add(:state_reason, 'Invalid state reason')
+    end
   end
 
   def update_code(attempts = 10)
     while attempts.positive?
-      code = format('%09d', SecureRandom.rand(999999999))
+      code = format('%09d', SecureRandom.rand(999_999_999))
       unless Order.where(code: code).exists?
         update!(code: code)
         break
       end
       attempts -= 1
     end
-    raise Errors::ValidationError, :failed_order_code_generation if attempts.zero?
+    if attempts.zero?
+      raise Errors::ValidationError, :failed_order_code_generation
+    end
   end
 
   def update_state_timestamps
     self.state_updated_at = Time.now.utc
-    self.state_expires_at = STATE_EXPIRATIONS.key?(state) ? state_updated_at + STATE_EXPIRATIONS[state] : nil
+    self.state_expires_at =
+      if STATE_EXPIRATIONS.key?(state)
+        state_updated_at + STATE_EXPIRATIONS[state]
+      else
+        nil
+      end
   end
 
   def get_last_state_timestamp(state)
@@ -232,7 +256,9 @@ class Order < ApplicationRecord
   end
 
   def create_state_history
-    state_histories.create!(state: state, reason: state_reason, updated_at: state_updated_at)
+    state_histories.create!(
+      state: state, reason: state_reason, updated_at: state_updated_at
+    )
   end
 
   def set_currency_code
@@ -254,17 +280,23 @@ class Order < ApplicationRecord
     machine.when(:cancel, SUBMITTED => CANCELED)
     machine.when(:fulfill, APPROVED => FULFILLED)
     machine.when(:refund, APPROVED => REFUNDED, FULFILLED => REFUNDED)
-    machine.on(:any) do
-      self.state = machine.state
-    end
+    machine.on(:any) { self.state = machine.state }
     machine
   end
 
   def complete_shipping_details?
-    [shipping_name, shipping_address_line1, shipping_city, shipping_country, buyer_phone_number].all?(&:present?)
+    [
+      shipping_name,
+      shipping_address_line1,
+      shipping_city,
+      shipping_country,
+      buyer_phone_number
+    ].all?(&:present?)
   end
 
   ransacker :has_offer_note do
-    Arel.sql('(select exists (select 1 from offers where offers.order_id = orders.id and offers.note <> \'\' and offers.submitted_at is not null))')
+    Arel.sql(
+      "(select exists (select 1 from offers where offers.order_id = orders.id and offers.note <> '' and offers.submitted_at is not null))"
+    )
   end
 end

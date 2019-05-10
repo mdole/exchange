@@ -14,7 +14,6 @@ class Tax::CalculatorService
       api_url: Rails.application.config_for(:taxjar)['taxjar_api_url'].presence
     )
   )
-
     @seller_nexus_addresses = process_nexus_addresses!(nexus_addresses)
     @fulfillment_type = fulfillment_type
     @tax_client = tax_client
@@ -29,9 +28,13 @@ class Tax::CalculatorService
   end
 
   def sales_tax
-    @sales_tax ||= UnitConverter.convert_dollars_to_cents(fetch_sales_tax.amount_to_collect)
+    @sales_tax ||=
+      UnitConverter.convert_dollars_to_cents(fetch_sales_tax.amount_to_collect)
   rescue Taxjar::Error => e
-    raise Errors::ProcessingError.new(:tax_calculator_failure, message: e.message)
+    raise Errors::ProcessingError.new(
+            :tax_calculator_failure,
+            message: e.message
+          )
   end
 
   def artsy_should_remit_taxes?
@@ -45,10 +48,13 @@ class Tax::CalculatorService
   def fetch_sales_tax
     @tax_client.tax_for_order(
       construct_tax_params(
-        line_items: [{
-          unit_price: UnitConverter.convert_cents_to_dollars(@unit_price_cents),
-          quantity: @quantity
-        }]
+        line_items: [
+          {
+            unit_price:
+              UnitConverter.convert_cents_to_dollars(@unit_price_cents),
+            quantity: @quantity
+          }
+        ]
       )
     )
   end
@@ -61,15 +67,16 @@ class Tax::CalculatorService
       to_state: destination_address.region,
       to_city: destination_address.city,
       to_street: destination_address.street_line1,
-      nexus_addresses: @seller_nexus_addresses.map do |ad|
-        {
-          country: ad.country,
-          zip: ad.postal_code,
-          state: ad.region,
-          city: ad.city,
-          street: ad.street_line1
-        }
-      end,
+      nexus_addresses:
+        @seller_nexus_addresses.map do |ad|
+          {
+            country: ad.country,
+            zip: ad.postal_code,
+            state: ad.region,
+            city: ad.city,
+            street: ad.street_line1
+          }
+        end,
       shipping: UnitConverter.convert_cents_to_dollars(@shipping_total_cents)
     }.merge(args)
   end
@@ -77,11 +84,18 @@ class Tax::CalculatorService
   def destination_address
     @destination_address ||=
       begin
-        address = @fulfillment_type == Order::SHIP ? @shipping_address : @artwork_location
+        address =
+          if @fulfillment_type == Order::SHIP
+            @shipping_address
+          else
+            @artwork_location
+          end
         validate_destination_address!(address)
         address
       rescue Errors::ValidationError => e
-        raise Errors::ValidationError, :invalid_artwork_address if @fulfillment_type == Order::PICKUP
+        if @fulfillment_type == Order::PICKUP
+          raise Errors::ValidationError, :invalid_artwork_address
+        end
 
         raise e
       end
@@ -93,19 +107,28 @@ class Tax::CalculatorService
   end
 
   def validate_destination_address!(destination_address)
-    raise Errors::ValidationError, :missing_region if destination_address.region.nil?
-    raise Errors::ValidationError, :missing_postal_code if destination_address.postal_code.nil?
+    if destination_address.region.nil?
+      raise Errors::ValidationError, :missing_region
+    end
+    if destination_address.postal_code.nil?
+      raise Errors::ValidationError, :missing_postal_code
+    end
   end
 
   def process_nexus_addresses!(seller_nexus_addresses)
-    nexus_addresses = seller_nexus_addresses.select { |ad| address_taxable?(ad) }
-    raise Errors::ValidationError, :no_taxable_addresses if nexus_addresses.blank?
+    nexus_addresses =
+      seller_nexus_addresses.select { |ad| address_taxable?(ad) }
+    if nexus_addresses.blank?
+      raise Errors::ValidationError, :no_taxable_addresses
+    end
 
     nexus_addresses.each { |ad| validate_nexus_address!(ad) }
     nexus_addresses
   end
 
   def validate_nexus_address!(nexus_address)
-    raise Errors::ValidationError, :invalid_seller_address if nexus_address.region.nil?
+    if nexus_address.region.nil?
+      raise Errors::ValidationError, :invalid_seller_address
+    end
   end
 end

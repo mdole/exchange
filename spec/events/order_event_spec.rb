@@ -35,8 +35,18 @@ describe OrderEvent, type: :events do
       **shipping_info
     )
   end
-  let!(:line_item1) { Fabricate(:line_item, list_price_cents: 200, order: order, commission_fee_cents: 40) }
-  let!(:line_item2) { Fabricate(:line_item, list_price_cents: 100, quantity: 2, order: order, commission_fee_cents: 20) }
+  let!(:line_item1) do
+    Fabricate(
+      :line_item,
+      list_price_cents: 200, order: order, commission_fee_cents: 40
+    )
+  end
+  let!(:line_item2) do
+    Fabricate(
+      :line_item,
+      list_price_cents: 100, quantity: 2, order: order, commission_fee_cents: 20
+    )
+  end
 
   let(:expected_line_item_properties) do
     [
@@ -58,11 +68,15 @@ describe OrderEvent, type: :events do
       }
     ]
   end
-  let(:event) { OrderEvent.new(user: user_id, action: Order::SUBMITTED, model: order) }
+  let(:event) do
+    OrderEvent.new(user: user_id, action: Order::SUBMITTED, model: order)
+  end
 
   describe 'post' do
     it 'calls ArtsyEventService to post event' do
-      expect(Artsy::EventService).to receive(:post_event).with(topic: 'commerce', event: instance_of(OrderEvent))
+      expect(Artsy::EventService).to receive(:post_event).with(
+        topic: 'commerce', event: instance_of(OrderEvent)
+      )
       OrderEvent.post(order, Order::SUBMITTED, user_id)
     end
   end
@@ -99,7 +113,9 @@ describe OrderEvent, type: :events do
         expect(event.properties[:updated_at]).not_to be_nil
         expect(event.properties[:created_at]).not_to be_nil
         expect(event.properties[:line_items].count).to eq 2
-        expect(event.properties[:line_items]).to match_array(expected_line_item_properties)
+        expect(event.properties[:line_items]).to match_array(
+          expected_line_item_properties
+        )
         expect(event.properties[:shipping_name]).to eq 'Fname Lname'
         expect(event.properties[:shipping_address_line1]).to eq '123 Main St'
         expect(event.properties[:shipping_address_line2]).to eq 'Apt 2'
@@ -108,20 +124,34 @@ describe OrderEvent, type: :events do
         expect(event.properties[:shipping_postal_code]).to eq '60618'
         expect(event.properties[:buyer_phone_number]).to eq '00123459876'
         expect(event.properties[:shipping_region]).to eq 'IL'
-        expect(event.properties[:state_expires_at]).to eq Time.parse('2018-08-18 15:48:00 -0400')
+        expect(event.properties[:state_expires_at]).to eq Time.parse(
+             '2018-08-18 15:48:00 -0400'
+           )
         expect(event.properties[:total_list_price_cents]).to eq(400)
         expect(event.properties[:last_offer]).to be_nil
       end
     end
     context 'with last_offer' do
-      let(:offer) { Fabricate(:offer, order: order, amount_cents: 200_00, shipping_total_cents: 100_00, tax_total_cents: 40_00, from_id: seller_id, from_type: 'gallery', creator_id: 'partner-admin', note: 'some random note') }
-      before do
-        order.update!(last_offer: offer)
+      let(:offer) do
+        Fabricate(
+          :offer,
+          order: order,
+          amount_cents: 200_00,
+          shipping_total_cents: 100_00,
+          tax_total_cents: 40_00,
+          from_id: seller_id,
+          from_type: 'gallery',
+          creator_id: 'partner-admin',
+          note: 'some random note'
+        )
       end
+      before { order.update!(last_offer: offer) }
       it 'includes last_offer' do
         expect(event.properties[:last_offer][:id]).to eq offer.id
         expect(event.properties[:last_offer][:amount_cents]).to eq 200_00
-        expect(event.properties[:last_offer][:shipping_total_cents]).to eq 100_00
+        expect(
+          event.properties[:last_offer][:shipping_total_cents]
+        ).to eq 100_00
         expect(event.properties[:last_offer][:tax_total_cents]).to eq 40_00
         expect(event.properties[:last_offer][:from_participant]).to eq 'seller'
         expect(event.properties[:last_offer][:creator_id]).to eq 'partner-admin'
@@ -130,16 +160,45 @@ describe OrderEvent, type: :events do
       end
     end
     context 'with last_offer that responds to another offer' do
-      let(:previous_offer) { Fabricate(:offer, order: order, amount_cents: 100_00, shipping_total_cents: 50_00, tax_total_cents: 20_00, from_id: user_id, from_type: 'user', creator_id: user_id) }
-      let(:offer) { Fabricate(:offer, order: order, amount_cents: 200_00, shipping_total_cents: 100_00, tax_total_cents: 40_00, from_id: seller_id, from_type: 'gallery', creator_id: 'partner-admin', responds_to: previous_offer) }
-      before do
-        order.update!(last_offer: offer)
+      let(:previous_offer) do
+        Fabricate(
+          :offer,
+          order: order,
+          amount_cents: 100_00,
+          shipping_total_cents: 50_00,
+          tax_total_cents: 20_00,
+          from_id: user_id,
+          from_type: 'user',
+          creator_id: user_id
+        )
       end
+      let(:offer) do
+        Fabricate(
+          :offer,
+          order: order,
+          amount_cents: 200_00,
+          shipping_total_cents: 100_00,
+          tax_total_cents: 40_00,
+          from_id: seller_id,
+          from_type: 'gallery',
+          creator_id: 'partner-admin',
+          responds_to: previous_offer
+        )
+      end
+      before { order.update!(last_offer: offer) }
       it 'includes last_offer' do
-        expect(event.properties[:last_offer][:in_response_to][:id]).to eq previous_offer.id
-        expect(event.properties[:last_offer][:in_response_to][:amount_cents]).to eq previous_offer[:amount_cents]
-        expect(event.properties[:last_offer][:in_response_to][:created_at]).to eq previous_offer[:created_at]
-        expect(event.properties[:last_offer][:in_response_to][:from_participant]).to eq previous_offer.from_participant
+        expect(
+          event.properties[:last_offer][:in_response_to][:id]
+        ).to eq previous_offer.id
+        expect(
+          event.properties[:last_offer][:in_response_to][:amount_cents]
+        ).to eq previous_offer[:amount_cents]
+        expect(
+          event.properties[:last_offer][:in_response_to][:created_at]
+        ).to eq previous_offer[:created_at]
+        expect(
+          event.properties[:last_offer][:in_response_to][:from_participant]
+        ).to eq previous_offer.from_participant
       end
     end
   end

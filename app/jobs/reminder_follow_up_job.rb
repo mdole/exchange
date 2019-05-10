@@ -11,9 +11,12 @@ class ReminderFollowUpJob < ApplicationJob
     case state
     when Order::SUBMITTED
       OrderEvent.post(order, Order::REMINDER_EVENT_VERB[:pending_approval], nil)
-
     when Order::APPROVED
-      OrderEvent.post(order, Order::REMINDER_EVENT_VERB[:pending_fulfillment], nil)
+      OrderEvent.post(
+        order,
+        Order::REMINDER_EVENT_VERB[:pending_fulfillment],
+        nil
+      )
     end
   end
 end

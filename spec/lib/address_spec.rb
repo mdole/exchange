@@ -11,7 +11,9 @@ describe Address do
     }
   end
   let(:address) { Address.new(address_params) }
-  let(:address_attributes) { %i[country region city street_line1 street_line2 postal_code] }
+  let(:address_attributes) do
+    %i[country region city street_line1 street_line2 postal_code]
+  end
   describe '#initialize' do
     context 'with an empty address' do
       it 'sets the address attributes to nil' do
@@ -48,7 +50,9 @@ describe Address do
     context 'with a country that is not US or CA' do
       it 'returns the region unmodified' do
         australia = Carmen::Country.coded('AU')
-        expect(address.send(:parse_region, australia, 'Northern Territory')).to eq 'Northern Territory'
+        expect(
+          address.send(:parse_region, australia, 'Northern Territory')
+        ).to eq 'Northern Territory'
       end
     end
     context 'with a country that is US or CA' do
@@ -60,7 +64,9 @@ describe Address do
         expect(address.send(:parse_region, canada, 'QC')).to eq 'QC'
       end
       it 'returns nil if the region is not found' do
-        expect(address.send(:parse_region, united_states, 'Floridada')).to be_nil
+        expect(
+          address.send(:parse_region, united_states, 'Floridada')
+        ).to be_nil
       end
     end
   end
@@ -72,7 +78,9 @@ describe Address do
         end
       end
       it 'returns true' do
-        expect(Address.new(address_params) == Address.new(address_params)).to be true
+        expect(
+          Address.new(address_params) == Address.new(address_params)
+        ).to be true
       end
     end
     context 'with an address that does not have the same address attributes' do
@@ -86,7 +94,9 @@ describe Address do
         }
       end
       it 'returns false' do
-        expect(Address.new(address_params) == Address.new(mismatched_address_params)).to be false
+        expect(
+          Address.new(address_params) == Address.new(mismatched_address_params)
+        ).to be false
       end
     end
   end

@@ -17,9 +17,6 @@ class Types::OfferType < Types::BaseObject
   field :note, String, null: true
 
   def from
-    OpenStruct.new(
-      id: object.from_id,
-      type: object.from_type
-    )
+    OpenStruct.new(id: object.from_id, type: object.from_type)
   end
 end

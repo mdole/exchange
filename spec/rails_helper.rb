@@ -3,7 +3,9 @@ require 'spec_helper'
 ENV['RAILS_ENV'] ||= 'test'
 require File.expand_path('../../config/environment', __FILE__)
 # Prevent database truncation if the environment is production
-abort('The Rails environment is running in production mode!') if Rails.env.production?
+if Rails.env.production?
+  abort('The Rails environment is running in production mode!')
+end
 require 'rspec/rails'
 require 'webmock/rspec'
 require 'selenium/webdriver'
@@ -28,9 +30,7 @@ RSpec.configure do |config|
   config.filter_rails_from_backtrace!
   config.infer_spec_type_from_file_location!
   config.use_transactional_fixtures = true
-  config.before do
-    ActiveJob::Base.queue_adapter = :test
-  end
+  config.before { ActiveJob::Base.queue_adapter = :test }
 end
 
 RSpec.configure do |config|
@@ -38,11 +38,7 @@ RSpec.configure do |config|
     Capybara.server = :puma, { Silent: true }
   end
 
-  config.before(:each, type: :system) do
-    driven_by :rack_test
-  end
+  config.before(:each, type: :system) { driven_by :rack_test }
 
-  config.before(:each, type: :system, js: true) do
-    driven_by :chrome_headless
-  end
+  config.before(:each, type: :system, js: true) { driven_by :chrome_headless }
 end

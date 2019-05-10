@@ -1,5 +1,10 @@
 class Address
-  attr_reader :country, :region, :city, :street_line1, :street_line2, :postal_code
+  attr_reader :country,
+              :region,
+              :city,
+              :street_line1,
+              :street_line2,
+              :postal_code
   UNITED_STATES = Carmen::Country.coded('US')
   def initialize(address)
     @address = parse(address)
@@ -12,11 +17,10 @@ class Address
   end
 
   def ==(other)
-    @country == other.country && \
-      @region == other.region && \
-      @city == other.city && \
-      @street_line1 == other.street_line1 && \
-      @street_line2 == other.street_line2 && \
+    @country == other.country && @region == other.region &&
+      @city == other.city &&
+      @street_line1 == other.street_line1 &&
+      @street_line2 == other.street_line2 &&
       @postal_code == other.postal_code
   end
 
@@ -26,8 +30,7 @@ class Address
 
   # The "continental United States" is defined as any US state that isn't Alaska or Hawaii.
   def continental_us?
-    united_states? &&
-      @region != UNITED_STATES.subregions.coded('HI').code &&
+    united_states? && @region != UNITED_STATES.subregions.coded('HI').code &&
       @region != UNITED_STATES.subregions.coded('AK').code
   end
 
@@ -37,6 +40,7 @@ class Address
     country = Carmen::Country.coded(address[:country])
     region = address[:region] || address[:state]
     region = parse_region(country, region)
+
     {
       country: country&.code,
       region: region,
@@ -49,9 +53,13 @@ class Address
 
   def parse_region(country, region)
     region = region&.strip
-    return region unless country&.code == UNITED_STATES.code || country&.code == Carmen::Country.coded('CA').code
+    unless country&.code == UNITED_STATES.code ||
+           country&.code == Carmen::Country.coded('CA').code
+      return region
+    end
 
-    parsed_region = country.subregions.named(region) || country.subregions.coded(region)
+    parsed_region =
+      country.subregions.named(region) || country.subregions.coded(region)
     parsed_region&.code
   end
 end

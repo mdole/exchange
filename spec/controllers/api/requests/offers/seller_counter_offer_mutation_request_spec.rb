@@ -6,15 +6,55 @@ describe Api::GraphqlController, type: :request do
   describe 'seller_counter_offer mutation' do
     include_context 'GraphQL Client'
     let(:order_seller_id) { jwt_partner_ids.first }
-    let(:partner) { { id: order_seller_id, artsy_collects_sales_tax: true, effective_commission_rate: 0.4 } }
+    let(:partner) do
+      {
+        id: order_seller_id,
+        artsy_collects_sales_tax: true,
+        effective_commission_rate: 0.4
+      }
+    end
     let(:buyer_id) { jwt_user_id }
     let(:artwork_location) { { country: 'US' } }
-    let(:artwork) { gravity_v1_artwork(_id: 'a-1', current_version_id: '1', location: artwork_location, domestic_shipping_fee_cents: 1000) }
+    let(:artwork) do
+      gravity_v1_artwork(
+        _id: 'a-1',
+        current_version_id: '1',
+        location: artwork_location,
+        domestic_shipping_fee_cents: 1_000
+      )
+    end
     let(:order_state) { Order::SUBMITTED }
-    let!(:order) { Fabricate(:order, mode: Order::OFFER, state: order_state, seller_id: order_seller_id, buyer_id: buyer_id, **shipping_info) }
-    let!(:offer) { Fabricate(:offer, order: order, amount_cents: 10000, from_id: buyer_id, from_type: Order::USER, submitted_at: Time.now.utc) }
+    let!(:order) do
+      Fabricate(
+        :order,
+        mode: Order::OFFER,
+        state: order_state,
+        seller_id: order_seller_id,
+        buyer_id: buyer_id,
+        **shipping_info
+      )
+    end
+    let!(:offer) do
+      Fabricate(
+        :offer,
+        order: order,
+        amount_cents: 10_000,
+        from_id: buyer_id,
+        from_type: Order::USER,
+        submitted_at: Time.now.utc
+      )
+    end
     let(:line_item_artwork_version) { artwork[:current_version_id] }
-    let!(:line_item) { Fabricate(:line_item, order: order, list_price_cents: 2000_00, artwork_id: artwork[:_id], artwork_version_id: line_item_artwork_version, quantity: 2) }
+    let!(:line_item) do
+      Fabricate(
+        :line_item,
+        order: order,
+        list_price_cents: 2000_00,
+        artwork_id: artwork[:_id],
+        artwork_version_id: line_item_artwork_version,
+        quantity: 2
+      )
+    end
     let(:partner_address) do
       Address.new(
         street_line1: '401 Broadway',
@@ -65,24 +105,28 @@ describe Api::GraphqlController, type: :request do
     end
 
     let(:seller_counter_offer_input) do
-      {
-        input: {
-          offerId: offer.id.to_s,
-          amountCents: 10000
-        }
-      }
+      { input: { offerId: offer.id.to_s, amountCents: 10_000 } }
     end
 
     before do
       order.update!(last_offer: offer)
 
-      allow(Gravity).to receive(:fetch_partner_locations).with(order_seller_id, tax_only: true).and_return([partner_address])
-      allow(Gravity).to receive_messages(
-        get_artwork: artwork,
-        fetch_partner: partner
+      allow(Gravity).to receive(:fetch_partner_locations).with(
+        order_seller_id,
+        tax_only: true
       )
-      allow(Taxjar::Client).to receive(:new).with(api_key: Rails.application.config_for(:taxjar)['taxjar_api_key'], api_url: nil).and_return(taxjar_client)
-      allow(taxjar_client).to receive(:tax_for_order).with(any_args).and_return(tax_response)
+        .and_return([partner_address])
+      allow(Gravity).to receive_messages(
+        get_artwork: artwork, fetch_partner: partner
+      )
+      allow(Taxjar::Client).to receive(:new).with(
+        api_key: Rails.application.config_for(:taxjar)['taxjar_api_key'],
+        api_url: nil
+      )
+        .and_return(taxjar_client)
+      allow(taxjar_client).to receive(:tax_for_order).with(any_args).and_return(
+        tax_response
+      )
     end
 
     context 'when not in the submitted state' do
@@ -91,8 +135,12 @@ describe Api::GraphqlController, type: :request do
       it "returns invalid state transition error and doesn't change the order state" do
         response = client.execute(mutation, seller_counter_offer_input)
 
-        expect(response.data.seller_counter_offer.order_or_error.error.type).to eq 'validation'
-        expect(response.data.seller_counter_offer.order_or_error.error.code).to eq 'invalid_state'
+        expect(
+          response.data.seller_counter_offer.order_or_error.error.type
+        ).to eq 'validation'
+        expect(
+          response.data.seller_counter_offer.order_or_error.error.code
+        ).to eq 'invalid_state'
         expect(order.reload.state).to eq Order::PENDING
       end
     end
@@ -104,8 +152,12 @@ describe Api::GraphqlController, type: :request do
 
         response = client.execute(mutation, seller_counter_offer_input)
 
-        expect(response.data.seller_counter_offer.order_or_error.error.type).to eq 'validation'
-        expect(response.data.seller_counter_offer.order_or_error.error.code).to eq 'not_last_offer'
+        expect(
+          response.data.seller_counter_offer.order_or_error.error.type
+        ).to eq 'validation'
+        expect(
+          response.data.seller_counter_offer.order_or_error.error.code
+        ).to eq 'not_last_offer'
         expect(order.reload.state).to eq Order::SUBMITTED
       end
     end
@@ -116,78 +168,93 @@ describe Api::GraphqlController, type: :request do
       it 'returns permission error' do
         response = client.execute(mutation, seller_counter_offer_input)
 
-        expect(response.data.seller_counter_offer.order_or_error.error.type).to eq 'validation'
-        expect(response.data.seller_counter_offer.order_or_error.error.code).to eq 'not_found'
+        expect(
+          response.data.seller_counter_offer.order_or_error.error.type
+        ).to eq 'validation'
+        expect(
+          response.data.seller_counter_offer.order_or_error.error.code
+        ).to eq 'not_found'
         expect(order.reload.state).to eq Order::SUBMITTED
       end
     end
 
     context 'when the specified offer does not exist' do
       let(:seller_counter_offer_input) do
-        {
-          input: {
-            offerId: '-1',
-            amountCents: 20000
-          }
-        }
+        { input: { offerId: '-1', amountCents: 20_000 } }
       end
 
       it 'returns a not-found error' do
-        expect { client.execute(mutation, seller_counter_offer_input) }.to raise_error do |error|
+        expect {
+          client.execute(mutation, seller_counter_offer_input)
+        }.to raise_error do |error|
           expect(error.status_code).to eq(404)
         end
       end
     end
 
     context 'when not waiting for seller response' do
-      let!(:offer) { Fabricate(:offer, order: order, amount_cents: 10000, from_id: order_seller_id, from_type: 'gallery', submitted_at: Time.now.utc) }
+      let!(:offer) do
+        Fabricate(
+          :offer,
+          order: order,
+          amount_cents: 10_000,
+          from_id: order_seller_id,
+          from_type: 'gallery',
+          submitted_at: Time.now.utc
+        )
+      end
 
       it 'returns cannot_counter' do
         response = client.execute(mutation, seller_counter_offer_input)
 
-        expect(response.data.seller_counter_offer.order_or_error.error.type).to eq 'validation'
-        expect(response.data.seller_counter_offer.order_or_error.error.code).to eq 'cannot_counter'
+        expect(
+          response.data.seller_counter_offer.order_or_error.error.type
+        ).to eq 'validation'
+        expect(
+          response.data.seller_counter_offer.order_or_error.error.code
+        ).to eq 'cannot_counter'
       end
     end
 
     context 'with proper permission' do
       before do
-        allow(Adapters::GravityV1).to receive(:get).with("/partner/#{order_seller_id}/all").and_return(gravity_v1_partner)
-        allow(Adapters::GravityV1).to receive(:get).with("/artwork/#{line_item.artwork_id}").and_return(artwork)
+        allow(Adapters::GravityV1).to receive(:get).with(
+          "/partner/#{order_seller_id}/all"
+        )
+          .and_return(gravity_v1_partner)
+        allow(Adapters::GravityV1).to receive(:get).with(
+          "/artwork/#{line_item.artwork_id}"
+        )
+          .and_return(artwork)
         order.update!(credit_card_id: '4242')
         allow(Gravity).to receive(:get_credit_card).with('4242').and_return(
-          external_id: 'bar',
-          customer_account: { external_id: 'foo' }
+          external_id: 'bar', customer_account: { external_id: 'foo' }
         )
       end
       it 'counters the order' do
-        expect do
+        expect {
           response = client.execute(mutation, seller_counter_offer_input)
-          expect(response.data.seller_counter_offer.order_or_error).not_to respond_to(:error)
+          expect(
+            response.data.seller_counter_offer.order_or_error
+          ).not_to respond_to(:error)
           last_offer = order.reload.last_offer
           expect(last_offer.responds_to).to eq(offer)
-          expect(last_offer.amount_cents).to eq(10000)
+          expect(last_offer.amount_cents).to eq(10_000)
           expect(last_offer.tax_total_cents).to eq(300)
           expect(last_offer.should_remit_sales_tax).to eq(false)
-          expect(last_offer.amount_cents).to eq(10000)
+          expect(last_offer.amount_cents).to eq(10_000)
           expect(last_offer.submitted_at).not_to eq(nil)
           # for partner counter offer creator_id and from_id are different
           expect(last_offer.creator_id).to eq(buyer_id)
           expect(last_offer.from_id).to eq(order_seller_id)
           # should update order amounts when offer is submitted
-          expect(order.items_total_cents).to eq(10000)
-        end.to change { order.reload.offers.count }.from(1).to(2)
+          expect(order.items_total_cents).to eq(10_000)
+        }.to change { order.reload.offers.count }.from(1).to(2)
       end
       context 'with offer note' do
         let(:note) { "I'll let you have it for free." }
         let(:seller_counter_offer_input) do
-          {
-            input: {
-              offerId: offer.id.to_s,
-              amountCents: 10000,
-              note: note
-            }
-          }
+          { input: { offerId: offer.id.to_s, amountCents: 10_000, note: note } }
         end
         it 'counters the order with note' do
           client.execute(mutation, seller_counter_offer_input)

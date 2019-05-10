@@ -5,7 +5,9 @@ describe OfferRespondReminderJob, type: :job do
   let(:state) { Order::SUBMITTED }
   let(:state_expires_at) { 1.day.from_now }
   let(:offer_submitted_at) { 7.days.ago }
-  let(:order) { Fabricate(:order, state: state, state_expires_at: state_expires_at) }
+  let(:order) do
+    Fabricate(:order, state: state, state_expires_at: state_expires_at)
+  end
   let(:offer) { Fabricate(:offer, order: order) }
   describe '#perform' do
     context 'order is not in submitted state' do
@@ -28,12 +30,13 @@ describe OfferRespondReminderJob, type: :job do
       end
     end
     context 'order is in submitted state' do
-      before do
-        order.update! last_offer: offer
-      end
+      before { order.update! last_offer: offer }
       it 'sends a reminder for a submitted order if the offer is still pending' do
-        expect(OfferEvent).to receive(:post)
-          .with(offer, OfferEvent::PENDING_RESPONSE, nil)
+        expect(OfferEvent).to receive(:post).with(
+          offer,
+          OfferEvent::PENDING_RESPONSE,
+          nil
+        )
 
         OfferRespondReminderJob.perform_now(order.id, offer.id)
       end

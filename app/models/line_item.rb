@@ -16,6 +16,8 @@ class LineItem < ApplicationRecord
   private
 
   def offer_order_lacks_line_items
-    errors.add(:order, 'offer order can only have one line item') if order.mode == Order::OFFER && order.line_items.any?
+    if order.mode == Order::OFFER && order.line_items.any?
+      errors.add(:order, 'offer order can only have one line item')
+    end
   end
 end

@@ -9,7 +9,6 @@ class Tax::CollectionService
       api_url: Rails.application.config_for(:taxjar)['taxjar_api_url'].presence
     )
   )
-
     @seller_nexus_addresses = process_nexus_addresses!(nexus_addresses)
     @line_item = line_item
     @fulfillment_type = line_item.order.fulfillment_type
@@ -22,9 +21,15 @@ class Tax::CollectionService
   end
 
   def record_tax_collected
-    @transaction = post_transaction if @line_item.should_remit_sales_tax? && @line_item.sales_tax_cents&.positive?
+    if @line_item.should_remit_sales_tax? &&
+       @line_item.sales_tax_cents&.positive?
+      @transaction = post_transaction
+    end
   rescue Taxjar::Error => e
-    raise Errors::ProcessingError.new(:tax_recording_failure, message: e.message)
+    raise Errors::ProcessingError.new(
+            :tax_recording_failure,
+            message: e.message
+          )
   end
 
   def refund_transaction(refund_date)
@@ -38,37 +43,50 @@ class Tax::CollectionService
 
   def construct_tax_params(args = {})
     {
-      amount: UnitConverter.convert_cents_to_dollars(@line_item.total_list_price_cents),
+      amount:
+        UnitConverter.convert_cents_to_dollars(
+          @line_item.total_list_price_cents
+        ),
       to_country: destination_address.country,
       to_zip: destination_address.postal_code,
       to_state: destination_address.region,
       to_city: destination_address.city,
       to_street: destination_address.street_line1,
-      nexus_addresses: @seller_nexus_addresses.map do |ad|
-        {
-          country: ad.country,
-          zip: ad.postal_code,
-          state: ad.region,
-          city: ad.city,
-          street: ad.street_line1
-        }
-      end,
-      shipping: UnitConverter.convert_cents_to_dollars(@effective_shipping_total_cents)
+      nexus_addresses:
+        @seller_nexus_addresses.map do |ad|
+          {
+            country: ad.country,
+            zip: ad.postal_code,
+            state: ad.region,
+            city: ad.city,
+            street: ad.street_line1
+          }
+        end,
+      shipping:
+        UnitConverter.convert_cents_to_dollars(@effective_shipping_total_cents)
     }.merge(args)
   end
 
   def effective_shipping_total_cents
-    @effective_shipping_total_cents ||= @line_item.should_remit_sales_tax ? @shipping_total_cents : 0
+    @effective_shipping_total_cents ||=
+      @line_item.should_remit_sales_tax ? @shipping_total_cents : 0
   end
 
   def destination_address
     @destination_address ||=
       begin
-        address = @fulfillment_type == Order::SHIP ? @shipping_address : @artwork_location
+        address =
+          if @fulfillment_type == Order::SHIP
+            @shipping_address
+          else
+            @artwork_location
+          end
         validate_destination_address!(address)
         address
       rescue Errors::ValidationError => e
-        raise Errors::ValidationError, :invalid_artwork_address if @fulfillment_type == Order::PICKUP
+        if @fulfillment_type == Order::PICKUP
+          raise Errors::ValidationError, :invalid_artwork_address
+        end
 
         raise e
       end
@@ -80,20 +98,29 @@ class Tax::CollectionService
   end
 
   def validate_destination_address!(destination_address)
-    raise Errors::ValidationError, :missing_region if destination_address.region.nil?
-    raise Errors::ValidationError, :missing_postal_code if destination_address.postal_code.nil?
+    if destination_address.region.nil?
+      raise Errors::ValidationError, :missing_region
+    end
+    if destination_address.postal_code.nil?
+      raise Errors::ValidationError, :missing_postal_code
+    end
   end
 
   def process_nexus_addresses!(seller_nexus_addresses)
-    nexus_addresses = seller_nexus_addresses.select { |ad| address_taxable?(ad) }
-    raise Errors::ValidationError, :no_taxable_addresses if nexus_addresses.blank?
+    nexus_addresses =
+      seller_nexus_addresses.select { |ad| address_taxable?(ad) }
+    if nexus_addresses.blank?
+      raise Errors::ValidationError, :no_taxable_addresses
+    end
 
     nexus_addresses.each { |ad| validate_nexus_address!(ad) }
     nexus_addresses
   end
 
   def validate_nexus_address!(nexus_address)
-    raise Errors::ValidationError, :invalid_seller_address if nexus_address.region.nil?
+    if nexus_address.region.nil?
+      raise Errors::ValidationError, :invalid_seller_address
+    end
   end
 
   def post_transaction
@@ -102,7 +129,8 @@ class Tax::CollectionService
       construct_tax_params(
         transaction_id: transaction_id,
         transaction_date: transaction_date,
-        sales_tax: UnitConverter.convert_cents_to_dollars(@line_item.sales_tax_cents)
+        sales_tax:
+          UnitConverter.convert_cents_to_dollars(@line_item.sales_tax_cents)
       )
     )
   end
@@ -113,7 +141,8 @@ class Tax::CollectionService
         transaction_id: "refund_#{transaction_id}",
         transaction_date: refund_date.iso8601,
         transaction_reference_id: transaction_id,
-        sales_tax: UnitConverter.convert_cents_to_dollars(@line_item.sales_tax_cents)
+        sales_tax:
+          UnitConverter.convert_cents_to_dollars(@line_item.sales_tax_cents)
       )
     )
   end

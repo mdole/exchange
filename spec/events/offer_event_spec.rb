@@ -36,8 +36,21 @@ describe OfferEvent, type: :events do
       **shipping_info
     )
   end
-  let!(:line_item1) { Fabricate(:line_item, list_price_cents: 200, order: order, commission_fee_cents: 40) }
-  let(:old_offer) { Fabricate(:offer, order: order, from_id: order.seller_id, from_type: 'gallery', amount_cents: 240) }
+  let!(:line_item1) do
+    Fabricate(
+      :line_item,
+      list_price_cents: 200, order: order, commission_fee_cents: 40
+    )
+  end
+  let(:old_offer) do
+    Fabricate(
+      :offer,
+      order: order,
+      from_id: order.seller_id,
+      from_type: 'gallery',
+      amount_cents: 240
+    )
+  end
   let(:offer) do
     Fabricate(
       :offer,
@@ -63,11 +76,15 @@ describe OfferEvent, type: :events do
       }
     ]
   end
-  let(:event) { OfferEvent.new(user: user_id, action: OfferEvent::SUBMITTED, model: offer) }
+  let(:event) do
+    OfferEvent.new(user: user_id, action: OfferEvent::SUBMITTED, model: offer)
+  end
 
   describe 'post' do
     it 'calls ArtsyEventService to post event' do
-      expect(Artsy::EventService).to receive(:post_event).with(topic: 'commerce', event: instance_of(OfferEvent))
+      expect(Artsy::EventService).to receive(:post_event).with(
+        topic: 'commerce', event: instance_of(OfferEvent)
+      )
       OfferEvent.post(offer, OfferEvent::SUBMITTED, user_id)
     end
   end
@@ -92,9 +109,12 @@ describe OfferEvent, type: :events do
       expect(event.properties[:from_id]).to eq offer.from_id
       expect(event.properties[:from_type]).to eq offer.from_type
       expect(event.properties[:creator_id]).to eq offer.creator_id
-      expect(event.properties[:shipping_total_cents]).to eq offer.shipping_total_cents
+      expect(event.properties[:shipping_total_cents]).to eq offer
+           .shipping_total_cents
       expect(event.properties[:tax_total_cents]).to eq offer.tax_total_cents
-      expect(event.properties[:note]).to eq 'Please consider my reasonable offer.'
+      expect(
+        event.properties[:note]
+      ).to eq 'Please consider my reasonable offer.'
     end
     it 'includes in_response_to' do
       in_response_to = event.properties[:in_response_to]
@@ -124,7 +144,9 @@ describe OfferEvent, type: :events do
           expect(order_prop[:updated_at]).not_to be_nil
           expect(order_prop[:created_at]).not_to be_nil
           expect(order_prop[:line_items].count).to eq 1
-          expect(order_prop[:line_items]).to match_array(expected_line_item_properties)
+          expect(order_prop[:line_items]).to match_array(
+            expected_line_item_properties
+          )
           expect(order_prop[:shipping_name]).to eq 'Fname Lname'
           expect(order_prop[:shipping_address_line1]).to eq '123 Main St'
           expect(order_prop[:shipping_address_line2]).to eq 'Apt 2'
@@ -133,7 +155,9 @@ describe OfferEvent, type: :events do
           expect(order_prop[:shipping_postal_code]).to eq '60618'
           expect(order_prop[:buyer_phone_number]).to eq '00123459876'
           expect(order_prop[:shipping_region]).to eq 'IL'
-          expect(order_prop[:state_expires_at]).to eq Time.parse('2018-08-18 15:48:00 -0400')
+          expect(order_prop[:state_expires_at]).to eq Time.parse(
+               '2018-08-18 15:48:00 -0400'
+             )
           expect(order_prop[:total_list_price_cents]).to eq(200)
         end
       end

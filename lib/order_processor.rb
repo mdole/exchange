@@ -14,8 +14,14 @@ class OrderProcessor
     raise Errors::ValidationError, @error unless valid?
 
     deduct_inventory
-    @transaction = PaymentService.create_and_authorize_charge(construct_charge_params)
-    raise Errors::FailedTransactionError.new(:charge_authorization_failed, @transaction) if @transaction.failed?
+    @transaction =
+      PaymentService.create_and_authorize_charge(construct_charge_params)
+    if @transaction.failed?
+      raise Errors::FailedTransactionError.new(
+              :charge_authorization_failed,
+              @transaction
+            )
+    end
 
     @order.update!(external_charge_id: @transaction.external_id)
   rescue Errors::ValidationError, Errors::ProcessingError => e
@@ -27,8 +33,11 @@ class OrderProcessor
     raise Errors::ValidationError, @error unless valid?
 
     deduct_inventory
-    @transaction = PaymentService.create_and_capture_charge(construct_charge_params)
-    raise Errors::FailedTransactionError.new(:capture_failed, @transaction) if @transaction.failed?
+    @transaction =
+      PaymentService.create_and_capture_charge(construct_charge_params)
+    if @transaction.failed?
+      raise Errors::FailedTransactionError.new(:capture_failed, @transaction)
+    end
 
     @order.update!(external_charge_id: @transaction.external_id)
   rescue Errors::ValidationError, Errors::ProcessingError => e
@@ -37,11 +46,14 @@ class OrderProcessor
   end
 
   def valid?
-    @validated ||= begin
-      @error = :unsupported_payment_method unless @order.payment_method == Order::CREDIT_CARD
-      @error ||= :missing_required_info unless @order.can_commit?
-      @error ||= @order.assert_credit_card
-    end
+    @validated ||=
+      begin
+        unless @order.payment_method == Order::CREDIT_CARD
+          @error = :unsupported_payment_method
+        end
+        @error ||= :missing_required_info unless @order.can_commit?
+        @error ||= @order.assert_credit_card
+      end
     @error.nil?
   end
 

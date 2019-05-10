@@ -1,2 +1,1 @@
-class Types::BaseScalar < GraphQL::Schema::Scalar
-end
+class Types::BaseScalar < GraphQL::Schema::Scalar; end

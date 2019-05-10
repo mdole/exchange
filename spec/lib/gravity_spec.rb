@@ -6,19 +6,23 @@ describe Gravity, type: :services do
   let(:partner) { { _id: 'partner-1', billing_location_id: 'location-1' } }
   describe '#fetch_partner' do
     it 'calls the /partner endpoint' do
-      allow(Adapters::GravityV1).to receive(:get).with("/partner/#{seller_id}/all")
+      allow(Adapters::GravityV1).to receive(:get).with(
+        "/partner/#{seller_id}/all"
+      )
       Gravity.fetch_partner(seller_id)
-      expect(Adapters::GravityV1).to have_received(:get).with("/partner/#{seller_id}/all")
+      expect(Adapters::GravityV1).to have_received(:get).with(
+        "/partner/#{seller_id}/all"
+      )
     end
 
     context 'with failed gravity call' do
       before do
-        stub_request(:get, %r{partner\/#{seller_id}}).to_return(status: 404, body: { error: 'not found' }.to_json)
+        stub_request(:get, %r{partner\/#{seller_id}}).to_return(
+          status: 404, body: { error: 'not found' }.to_json
+        )
       end
       it 'raises error' do
-        expect do
-          Gravity.fetch_partner(seller_id)
-        end.to raise_error do |error|
+        expect { Gravity.fetch_partner(seller_id) }.to raise_error do |error|
           expect(error).to be_a Errors::ValidationError
           expect(error.code).to eq :unknown_partner
         end
@@ -27,18 +31,33 @@ describe Gravity, type: :services do
   end
 
   describe '#fetch_partner_locations' do
-    let(:valid_locations) { [{ country: 'US', state: 'NY', postal_code: '12345' }, { country: 'US', state: 'FL', postal_code: '67890' }] }
+    let(:valid_locations) do
+      [
+        { country: 'US', state: 'NY', postal_code: '12345' },
+        { country: 'US', state: 'FL', postal_code: '67890' }
+      ]
+    end
     let(:invalid_location) { [{ country: 'US', state: 'Floridada' }] }
     context 'calls the correct location Gravity endpoint' do
       context 'without tax_only flag' do
         it 'does not filter by address type' do
-          expect(Adapters::GravityV1).to receive(:get).with("/partner/#{seller_id}/locations", params: { private: true }).and_return(valid_locations)
+          expect(Adapters::GravityV1).to receive(:get).with(
+            "/partner/#{seller_id}/locations",
+            params: { private: true }
+          )
+            .and_return(valid_locations)
           Gravity.fetch_partner_locations(seller_id)
         end
       end
       context 'with tax_only flag' do
         it 'filters by address type' do
-          expect(Adapters::GravityV1).to receive(:get).with("/partner/#{seller_id}/locations", params: { address_type: ['Business', 'Sales tax nexus'], private: true }).and_return(valid_locations)
+          expect(Adapters::GravityV1).to receive(:get).with(
+            "/partner/#{seller_id}/locations",
+            params: {
+              address_type: ['Business', 'Sales tax nexus'], private: true
+            }
+          )
+            .and_return(valid_locations)
           Gravity.fetch_partner_locations(seller_id, tax_only: true)
         end
       end
@@ -46,16 +65,29 @@ describe Gravity, type: :services do
     context 'with at least one partner location' do
       context 'with valid partner locations' do
         it 'returns new addresses for each location' do
-          allow(Adapters::GravityV1).to receive(:get).with("/partner/#{seller_id}/locations", params: { address_type: ['Business', 'Sales tax nexus'], private: true }).and_return(valid_locations)
-          partner_addresses = Gravity.fetch_partner_locations(seller_id, tax_only: true)
+          allow(Adapters::GravityV1).to receive(:get).with(
+            "/partner/#{seller_id}/locations",
+            params: {
+              address_type: ['Business', 'Sales tax nexus'], private: true
+            }
+          )
+            .and_return(valid_locations)
+          partner_addresses =
+            Gravity.fetch_partner_locations(seller_id, tax_only: true)
           partner_addresses.each { |ad| expect(ad).to be_a Address }
         end
       end
     end
     context 'with no partner locations' do
       it 'raises error' do
-        allow(Adapters::GravityV1).to receive(:get).with("/partner/#{seller_id}/locations", params: { private: true }).and_return([])
-        expect { Gravity.fetch_partner_locations(seller_id) }.to raise_error do |error|
+        allow(Adapters::GravityV1).to receive(:get).with(
+          "/partner/#{seller_id}/locations",
+          params: { private: true }
+        )
+          .and_return([])
+        expect {
+          Gravity.fetch_partner_locations(seller_id)
+        }.to raise_error do |error|
           expect(error).to be_a Errors::ValidationError
           expect(error.code).to eq :missing_partner_location
           expect(error.data[:partner_id]).to eq seller_id
@@ -65,14 +97,23 @@ describe Gravity, type: :services do
   end
 
   describe '#get_merchant_account' do
-    let(:partner_merchant_accounts) { [{ external_id: 'ma-1' }, { external_id: 'some_account' }] }
+    let(:partner_merchant_accounts) do
+      [{ external_id: 'ma-1' }, { external_id: 'some_account' }]
+    end
     context 'with merchant account' do
       before do
-        allow(Adapters::GravityV1).to receive(:get).with('/merchant_accounts', params: { partner_id: seller_id }).and_return(partner_merchant_accounts)
+        allow(Adapters::GravityV1).to receive(:get).with(
+          '/merchant_accounts',
+          params: { partner_id: seller_id }
+        )
+          .and_return(partner_merchant_accounts)
       end
       it 'calls the /merchant_accounts Gravity endpoint' do
         Gravity.get_merchant_account(seller_id)
-        expect(Adapters::GravityV1).to have_received(:get).with('/merchant_accounts', params: { partner_id: seller_id })
+        expect(Adapters::GravityV1).to have_received(:get).with(
+          '/merchant_accounts',
+          params: { partner_id: seller_id }
+        )
       end
       it "returns the first merchant account of the partner's merchant accounts" do
         result = Gravity.get_merchant_account(seller_id)
@@ -81,8 +122,14 @@ describe Gravity, type: :services do
     end
 
     it 'raises an error if the partner does not have a merchant account' do
-      allow(Adapters::GravityV1).to receive(:get).with('/merchant_accounts', params: { partner_id: seller_id }).and_return([])
-      expect { Gravity.get_merchant_account(seller_id) }.to raise_error do |error|
+      allow(Adapters::GravityV1).to receive(:get).with(
+        '/merchant_accounts',
+        params: { partner_id: seller_id }
+      )
+        .and_return([])
+      expect {
+        Gravity.get_merchant_account(seller_id)
+      }.to raise_error do |error|
         expect(error).to be_a(Errors::InternalError)
         expect(error.type).to eq :internal
         expect(error.code).to eq :gravity
@@ -91,12 +138,13 @@ describe Gravity, type: :services do
 
     context 'with failed gravity call' do
       before do
-        stub_request(:get, /merchant_accounts\?partner_id=#{seller_id}/).to_return(status: 404, body: { error: 'not found' }.to_json)
+        stub_request(:get, /merchant_accounts\?partner_id=#{seller_id}/)
+          .to_return(status: 404, body: { error: 'not found' }.to_json)
       end
       it 'raises error' do
-        expect do
+        expect {
           Gravity.get_merchant_account(seller_id)
-        end.to raise_error do |error|
+        }.to raise_error do |error|
           expect(error).to be_a Errors::ValidationError
           expect(error.code).to eq :missing_merchant_account
         end
@@ -106,21 +154,34 @@ describe Gravity, type: :services do
 
   describe '#get_credit_card' do
     let(:credit_card_id) { 'cc-1' }
-    let(:credit_card) { { external_id: 'card-1', customer_account: { external_id: 'cust-1' }, deactivated_at: nil } }
+    let(:credit_card) do
+      {
+        external_id: 'card-1',
+        customer_account: { external_id: 'cust-1' },
+        deactivated_at: nil
+      }
+    end
     it 'calls the /credit_card Gravity endpoint' do
-      allow(Adapters::GravityV1).to receive(:get).with("/credit_card/#{credit_card_id}").and_return(credit_card)
+      allow(Adapters::GravityV1).to receive(:get).with(
+        "/credit_card/#{credit_card_id}"
+      )
+        .and_return(credit_card)
       Gravity.get_credit_card(credit_card_id)
-      expect(Adapters::GravityV1).to have_received(:get).with("/credit_card/#{credit_card_id}")
+      expect(Adapters::GravityV1).to have_received(:get).with(
+        "/credit_card/#{credit_card_id}"
+      )
     end
 
     context 'with failed gravity call' do
       before do
-        stub_request(:get, %r{credit_card\/#{credit_card_id}}).to_return(status: 404, body: { error: 'not found' }.to_json)
+        stub_request(:get, %r{credit_card\/#{credit_card_id}}).to_return(
+          status: 404, body: { error: 'not found' }.to_json
+        )
       end
       it 'raises error' do
-        expect do
+        expect {
           Gravity.get_credit_card(credit_card_id)
-        end.to raise_error do |error|
+        }.to raise_error do |error|
           expect(error).to be_a Errors::ValidationError
           expect(error.code).to eq :credit_card_not_found
         end
@@ -133,11 +194,16 @@ describe Gravity, type: :services do
     it 'calls the /artwork endpoint' do
       allow(Adapters::GravityV1).to receive(:get).with("/artwork/#{artwork_id}")
       Gravity.get_artwork(artwork_id)
-      expect(Adapters::GravityV1).to have_received(:get).with("/artwork/#{artwork_id}")
+      expect(Adapters::GravityV1).to have_received(:get).with(
+        "/artwork/#{artwork_id}"
+      )
     end
     context 'with failed gravity call' do
       it 'returns nil' do
-        expect(Adapters::GravityV1).to receive(:get).and_raise(Adapters::GravityError, 'timeout')
+        expect(Adapters::GravityV1).to receive(:get).and_raise(
+          Adapters::GravityError,
+          'timeout'
+        )
         expect(Gravity.get_artwork(artwork_id)).to be_nil
       end
     end
@@ -148,11 +214,16 @@ describe Gravity, type: :services do
     it 'calls the /userid endpoint' do
       allow(Adapters::GravityV1).to receive(:get).with("/user/#{user_id}")
       Gravity.get_user(user_id)
-      expect(Adapters::GravityV1).to have_received(:get).with("/user/#{user_id}")
+      expect(Adapters::GravityV1).to have_received(:get).with(
+        "/user/#{user_id}"
+      )
     end
     context 'with failed gravity call' do
       it 'returns nil' do
-        expect(Adapters::GravityV1).to receive(:get).and_raise(Adapters::GravityError, 'timeout')
+        expect(Adapters::GravityV1).to receive(:get).and_raise(
+          Adapters::GravityError,
+          'timeout'
+        )
         expect(Gravity.get_user(user_id)).to be_nil
       end
     end

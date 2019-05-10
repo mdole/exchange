@@ -18,15 +18,18 @@ module Adapters
       raise GravityNotFoundError if response.status == 404
 
       results = JSON.parse(response.body, symbolize_names: true)
-      raise GravityError, "Couldn't perform request! status: #{response.status}. Message: #{results[:message]}" unless response.success?
+      unless response.success?
+        raise GravityError,
+              "Couldn't perform request! status: #{response.status}. Message: #{
+                results[:message]
+              }"
+      end
 
       results
     end
 
     def self.headers
-      {
-        'X-XAPP-TOKEN' => Rails.application.config_for(:gravity)['xapp_token']
-      }
+      { 'X-XAPP-TOKEN' => Rails.application.config_for(:gravity)['xapp_token'] }
     end
   end
 end

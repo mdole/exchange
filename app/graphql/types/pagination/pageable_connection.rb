@@ -9,9 +9,14 @@ class Types::Pagination::PageableConnection < GraphQL::Types::Relay::BaseConnect
     return if total_pages <= 1
 
     cursors = {}
-    cursors[:first] = page_cursor(1) if total_pages > MAX_CURSOR_COUNT && around_page_numbers.exclude?(1)
+    if total_pages > MAX_CURSOR_COUNT && around_page_numbers.exclude?(1)
+      cursors[:first] = page_cursor(1)
+    end
     cursors[:around] = around_page_numbers.map { |pn| page_cursor(pn) }
-    cursors[:last] = page_cursor(total_pages) if total_pages > MAX_CURSOR_COUNT && around_page_numbers.exclude?(total_pages)
+    if total_pages > MAX_CURSOR_COUNT &&
+       around_page_numbers.exclude?(total_pages)
+      cursors[:last] = page_cursor(total_pages)
+    end
     cursors[:previous] = page_cursor(current_page - 1) if current_page > 1
 
     cursors

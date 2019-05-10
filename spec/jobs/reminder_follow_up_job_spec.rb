@@ -4,14 +4,19 @@ require 'timecop'
 describe ReminderFollowUpJob, type: :job do
   let(:state) { Order::PENDING }
   let(:state_expires_at) { 1.day.from_now }
-  let(:order) { Fabricate(:order, state: state, state_expires_at: state_expires_at) }
+  let(:order) do
+    Fabricate(:order, state: state, state_expires_at: state_expires_at)
+  end
   describe '#perform' do
     context 'with an order in the same state before its expiration time' do
       context 'SUBMITTED' do
         let(:state) { Order::SUBMITTED }
         it 'sends an internal message to admins about seller lapsing' do
-          expect(OrderEvent).to receive(:post)
-            .with(order, Order::REMINDER_EVENT_VERB[:pending_approval], nil)
+          expect(OrderEvent).to receive(:post).with(
+            order,
+            Order::REMINDER_EVENT_VERB[:pending_approval],
+            nil
+          )
 
           ReminderFollowUpJob.perform_now(order.id, Order::SUBMITTED)
         end
@@ -19,8 +24,11 @@ describe ReminderFollowUpJob, type: :job do
       context 'APPROVED' do
         let(:state) { Order::APPROVED }
         it 'sends an internal message to admins about buyer lapsing' do
-          expect(OrderEvent).to receive(:post)
-            .with(order, Order::REMINDER_EVENT_VERB[:pending_fulfillment], nil)
+          expect(OrderEvent).to receive(:post).with(
+            order,
+            Order::REMINDER_EVENT_VERB[:pending_fulfillment],
+            nil
+          )
 
           ReminderFollowUpJob.perform_now(order.id, Order::APPROVED)
         end

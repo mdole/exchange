@@ -6,8 +6,7 @@ RSpec.shared_context 'use stripe mock' do
   after { StripeMock.stop }
   let(:stripe_customer) do
     Stripe::Customer.create(
-      email: 'someuser@email.com',
-      source: stripe_helper.generate_card_token
+      email: 'someuser@email.com', source: stripe_helper.generate_card_token
     )
   end
   let(:uncaptured_charge) do
@@ -26,10 +25,7 @@ RSpec.shared_context 'use stripe mock' do
       amount: buyer_amount,
       currency: 'usd',
       source: stripe_helper.generate_card_token,
-      destination: {
-        account: 'ma-1',
-        amount: seller_amount
-      },
+      destination: { account: 'ma-1', amount: seller_amount },
       capture: true
     )
   end

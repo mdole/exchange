@@ -9,25 +9,28 @@ describe LineItem, type: :model do
   describe 'validation' do
     context 'Buy Order' do
       it 'can create many line items' do
-        expect do
+        expect {
           order.line_items.create!(quantity: 2)
           order.line_items.create!(quantity: 3)
-        end.to change(order.line_items, :count).by(2)
+        }.to change(order.line_items, :count).by(2)
       end
     end
 
     context 'Offer Order' do
       let(:mode) { Order::OFFER }
       it 'creates line item' do
-        expect do
-          order.line_items.create!(quantity: 2)
-        end.to change(order.line_items, :count).by(1)
+        expect { order.line_items.create!(quantity: 2) }.to change(
+          order.line_items,
+          :count
+        )
+          .by(1)
       end
       it 'raises error when creating second line item' do
         order.line_items.create!(quantity: 2)
-        expect do
-          order.line_items.create!(quantity: 4)
-        end.to raise_error(ActiveRecord::RecordInvalid, /Order offer order can only have one line item/)
+        expect { order.line_items.create!(quantity: 4) }.to raise_error(
+          ActiveRecord::RecordInvalid,
+          /Order offer order can only have one line item/
+        )
       end
     end
   end

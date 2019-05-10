@@ -9,10 +9,7 @@ class Transaction < ApplicationRecord
     REFUND = 'refund'.freeze
   ].freeze
 
-  STATUSES = [
-    SUCCESS = 'success'.freeze,
-    FAILURE = 'failure'.freeze
-  ].freeze
+  STATUSES = [SUCCESS = 'success'.freeze, FAILURE = 'failure'.freeze].freeze
 
   def to_s
     failed? ? "#{id}: #{failure_code} - #{failure_message}" : id

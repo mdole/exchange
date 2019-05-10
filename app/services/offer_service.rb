@@ -1,7 +1,19 @@
 module OfferService
-  def self.create_pending_offer(order, amount_cents:, note:, from_id:, from_type:, creator_id:, responds_to: nil)
-    raise Errors::ValidationError, :cannot_offer unless order.mode == Order::OFFER
-    raise Errors::ValidationError, :invalid_amount_cents unless amount_cents.positive?
+  def self.create_pending_offer(
+    order,
+    amount_cents:,
+    note:,
+    from_id:,
+    from_type:,
+    creator_id:,
+    responds_to: nil
+  )
+    unless order.mode == Order::OFFER
+      raise Errors::ValidationError, :cannot_offer
+    end
+    unless amount_cents.positive?
+      raise Errors::ValidationError, :invalid_amount_cents
+    end
 
     offer_totals = OfferTotals.new(order, amount_cents)
     order.offers.create!(
@@ -17,17 +29,33 @@ module OfferService
     )
   end
 
-  def self.create_pending_counter_offer(responds_to, amount_cents:, note:, from_id:, from_type:, creator_id:)
-    raise Errors::ValidationError, :invalid_state unless responds_to.order.state == Order::SUBMITTED
-    raise Errors::ValidationError, :not_last_offer unless responds_to.last_offer?
+  def self.create_pending_counter_offer(
+    responds_to, amount_cents:, note:, from_id:, from_type:, creator_id:
+  )
+    unless responds_to.order.state == Order::SUBMITTED
+      raise Errors::ValidationError, :invalid_state
+    end
+    unless responds_to.last_offer?
+      raise Errors::ValidationError, :not_last_offer
+    end
 
-    create_pending_offer(responds_to.order, amount_cents: amount_cents, note: note, from_id: from_id, from_type: from_type, creator_id: creator_id, responds_to: responds_to)
+    create_pending_offer(
+      responds_to.order,
+      amount_cents: amount_cents,
+      note: note,
+      from_id: from_id,
+      from_type: from_type,
+      creator_id: creator_id,
+      responds_to: responds_to
+    )
   end
 
   def self.submit_pending_offer(offer)
     order = offer.order
     raise Errors::ValidationError, :invalid_offer if offer.submitted?
-    raise Errors::ProcessingError, :insufficient_inventory unless order.inventory?
+    unless order.inventory?
+      raise Errors::ProcessingError, :insufficient_inventory
+    end
 
     order = offer.order
     offer_order_totals = OfferOrderTotals.new(offer)
@@ -54,9 +82,7 @@ module OfferService
     order = offer.order
     validate_order_submission!(order)
 
-    order.submit! do
-      submit_pending_offer(offer)
-    end
+    order.submit! { submit_pending_offer(offer) }
 
     OrderEvent.delay_post(order, Order::SUBMITTED, user_id)
     Exchange.dogstatsd.increment 'order.submit'
@@ -67,7 +93,9 @@ module OfferService
 
     order = offer.order
     order_processor = OrderProcessor.new(order, user_id)
-    raise Errors::ValidationError, order_processor.error unless order_processor.valid?
+    unless order_processor.valid?
+      raise Errors::ValidationError, order_processor.error
+    end
 
     order.approve! do
       totals = OfferOrderTotals.new(offer)
@@ -81,15 +109,23 @@ module OfferService
       order.transactions << order_processor.transaction
     end
     OrderEvent.delay_post(order, Order::APPROVED, user_id)
-    OrderFollowUpJob.set(wait_until: order.state_expires_at).perform_later(order.id, order.state)
-    ReminderFollowUpJob.set(wait_until: order.state_expiration_reminder_time).perform_later(order.id, order.state)
+    OrderFollowUpJob.set(wait_until: order.state_expires_at).perform_later(
+      order.id,
+      order.state
+    )
+    ReminderFollowUpJob.set(wait_until: order.state_expiration_reminder_time)
+      .perform_later(order.id, order.state)
     Exchange.dogstatsd.increment 'order.approved'
   rescue Errors::FailedTransactionError => e
     transaction = e.transaction
     return if transaction.blank?
 
     order.transactions << transaction
-    PostTransactionNotificationJob.perform_later(transaction.id, TransactionEvent::CREATED, user_id)
+    PostTransactionNotificationJob.perform_later(
+      transaction.id,
+      TransactionEvent::CREATED,
+      user_id
+    )
     raise e
   end
 
@@ -97,16 +133,24 @@ module OfferService
     private
 
     def post_submit_offer(offer)
-      OrderFollowUpJob.set(wait_until: offer.order.state_expires_at).perform_later(offer.order.id, offer.order.state)
+      OrderFollowUpJob.set(wait_until: offer.order.state_expires_at)
+        .perform_later(offer.order.id, offer.order.state)
       OfferEvent.delay_post(offer, OfferEvent::SUBMITTED)
-      OfferRespondReminderJob.set(wait_until: offer.order.state_expires_at - Order::DEFAULT_EXPIRATION_REMINDER)
-                             .perform_later(offer.order.id, offer.id)
+      OfferRespondReminderJob.set(
+        wait_until:
+          offer.order.state_expires_at - Order::DEFAULT_EXPIRATION_REMINDER
+      )
+        .perform_later(offer.order.id, offer.id)
       Exchange.dogstatsd.increment 'offer.submit'
     end
 
     def validate_order_submission!(order)
-      raise Errors::ValidationError, :cant_submit unless order.mode == Order::OFFER
-      raise Errors::ValidationError, :missing_required_info unless order.can_commit?
+      unless order.mode == Order::OFFER
+        raise Errors::ValidationError, :cant_submit
+      end
+      unless order.can_commit?
+        raise Errors::ValidationError, :missing_required_info
+      end
 
       unless order.valid_artwork_version?
         Exchange.dogstatsd.increment 'submit.artwork_version_mismatch'

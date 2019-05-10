@@ -1,7 +1,14 @@
 require 'rails_helper'
 
 describe ApplicationErrorEvent, type: :events do
-  let(:application_error) { Errors::ApplicationError.new(:validation, :missing_region, { something: 'was wrong' }, true) }
+  let(:application_error) do
+    Errors::ApplicationError.new(
+      :validation,
+      :missing_region,
+      { something: 'was wrong' },
+      true
+    )
+  end
   let(:event) { ApplicationErrorEvent.new(application_error) }
 
   describe 'TOPIC' do
@@ -22,7 +29,9 @@ describe ApplicationErrorEvent, type: :events do
     end
 
     it 'has correct data' do
-      expect(parsed_json['properties']['data']).to eq('something' => 'was wrong')
+      expect(parsed_json['properties']['data']).to eq(
+        'something' => 'was wrong'
+      )
     end
 
     it 'has created_at' do

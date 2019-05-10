@@ -35,10 +35,24 @@ RSpec.describe Offer, type: :model do
   end
 
   describe '#from_participant' do
-    let(:order) { Fabricate(:order, buyer_id: 'buyer1', buyer_type: 'user', seller_id: 'seller1', seller_type: 'gallery') }
-    let(:seller_offer) { Fabricate(:offer, order: order, from_id: 'seller1', from_type: 'gallery') }
-    let(:buyer_offer) { Fabricate(:offer, order: order, from_id: 'buyer1', from_type: 'user') }
-    let(:ufo_offer) { Fabricate(:offer, order: order, from_id: 'marse', from_type: 'ufo') }
+    let(:order) do
+      Fabricate(
+        :order,
+        buyer_id: 'buyer1',
+        buyer_type: 'user',
+        seller_id: 'seller1',
+        seller_type: 'gallery'
+      )
+    end
+    let(:seller_offer) do
+      Fabricate(:offer, order: order, from_id: 'seller1', from_type: 'gallery')
+    end
+    let(:buyer_offer) do
+      Fabricate(:offer, order: order, from_id: 'buyer1', from_type: 'user')
+    end
+    let(:ufo_offer) do
+      Fabricate(:offer, order: order, from_id: 'marse', from_type: 'ufo')
+    end
     it 'returns buyer for buyer_offer' do
       expect(buyer_offer.from_participant).to eq Order::BUYER
     end
@@ -54,10 +68,24 @@ RSpec.describe Offer, type: :model do
   end
 
   describe '#to_participant' do
-    let(:order) { Fabricate(:order, buyer_id: 'buyer1', buyer_type: 'user', seller_id: 'seller1', seller_type: 'gallery') }
-    let(:seller_offer) { Fabricate(:offer, order: order, from_id: 'seller1', from_type: 'gallery') }
-    let(:buyer_offer) { Fabricate(:offer, order: order, from_id: 'buyer1', from_type: 'user') }
-    let(:ufo_offer) { Fabricate(:offer, order: order, from_id: 'marse', from_type: 'ufo') }
+    let(:order) do
+      Fabricate(
+        :order,
+        buyer_id: 'buyer1',
+        buyer_type: 'user',
+        seller_id: 'seller1',
+        seller_type: 'gallery'
+      )
+    end
+    let(:seller_offer) do
+      Fabricate(:offer, order: order, from_id: 'seller1', from_type: 'gallery')
+    end
+    let(:buyer_offer) do
+      Fabricate(:offer, order: order, from_id: 'buyer1', from_type: 'user')
+    end
+    let(:ufo_offer) do
+      Fabricate(:offer, order: order, from_id: 'marse', from_type: 'ufo')
+    end
     it 'returns seller for buyer_offer' do
       expect(buyer_offer.to_participant).to eq Order::SELLER
     end

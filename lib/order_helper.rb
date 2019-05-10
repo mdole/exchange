@@ -5,9 +5,12 @@ module OrderHelper
 
   def assert_credit_card
     case credit_card
-    when ->(cc) { cc[:external_id].blank? } then :credit_card_missing_external_id
-    when ->(cc) { cc.dig(:customer_account, :external_id).blank? } then :credit_card_missing_customer
-    when ->(cc) { cc[:deactivated_at].present? } then :credit_card_deactivated
+    when ->(cc) { cc[:external_id].blank? }
+      :credit_card_missing_external_id
+    when ->(cc) { cc.dig(:customer_account, :external_id).blank? }
+      :credit_card_missing_customer
+    when ->(cc) { cc[:deactivated_at].present? }
+      :credit_card_deactivated
     end
   end
 
@@ -28,7 +31,8 @@ module OrderHelper
   end
 
   def seller_locations
-    @seller_locations ||= Gravity.fetch_partner_locations(seller_id, tax_only: true)
+    @seller_locations ||=
+      Gravity.fetch_partner_locations(seller_id, tax_only: true)
   end
 
   def inventory?
@@ -40,11 +44,14 @@ module OrderHelper
   end
 
   def current_commission_rate
-    @current_commission_rate ||= begin
-      current_rate = partner[:effective_commission_rate]
-      raise Errors::ValidationError, :missing_commission_rate if current_rate.blank?
+    @current_commission_rate ||=
+      begin
+        current_rate = partner[:effective_commission_rate]
+        if current_rate.blank?
+          raise Errors::ValidationError, :missing_commission_rate
+        end
 
-      current_rate
-    end
+        current_rate
+      end
   end
 end

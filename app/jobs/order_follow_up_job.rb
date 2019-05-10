@@ -19,10 +19,15 @@ class OrderFollowUpJob < ApplicationJob
 
   def cancel_submitted_order(order)
     cancelation_service = OrderCancellationService.new(order)
-    buyer_lapsed_offer?(order) ? cancelation_service.buyer_lapse! : cancelation_service.seller_lapse!
+    if buyer_lapsed_offer?(order)
+      cancelation_service.buyer_lapse!
+    else
+      cancelation_service.seller_lapse!
+    end
   end
 
   def buyer_lapsed_offer?(order)
-    order.mode == Order::OFFER && order&.last_offer&.awaiting_response_from == Order::BUYER
+    order.mode == Order::OFFER &&
+      order&.last_offer&.awaiting_response_from == Order::BUYER
   end
 end

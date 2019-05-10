@@ -18,8 +18,8 @@ module Exchange
 
   def self.build_statsd
     hostname = ENV.fetch('DATADOG_TRACE_AGENT_HOSTNAME', 'localhost')
-    port = 8125
-    tags = ['service:exchange']
+    port = 8_125
+    tags = %w[service:exchange]
     dogstatsd = Datadog::Statsd.new(hostname, port, tags: tags)
     dogstatsd.disabled = ENV['DATADOG_ENABLED'] != 'true'
     dogstatsd

@@ -41,8 +41,10 @@ class Offer < ApplicationRecord
     return unless submitted?
 
     case from_participant
-    when Order::BUYER then Order::SELLER
-    when Order::SELLER then Order::BUYER
+    when Order::BUYER
+      Order::SELLER
+    when Order::SELLER
+      Order::BUYER
     end
   end
 end

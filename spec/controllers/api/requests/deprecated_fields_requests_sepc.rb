@@ -23,9 +23,38 @@ describe Api::GraphqlController, type: :request do
         state: Order::SUBMITTED
       )
     end
-    let!(:order1_line_item1) { Fabricate(:line_item, order: order, artwork_id: 'artwork1', edition_set_id: 'edi-1', list_price_cents: 200_00) }
-    let!(:buyer_offer1) { Fabricate(:offer, order: order, amount_cents: 200, from_id: buyer_id, from_type: Order::USER, creator_id: buyer_id, submitted_at: 2.days.ago, created_at: 2.days.ago) }
-    let!(:buyer_offer2) { Fabricate(:offer, order: order, amount_cents: 300, from_id: buyer_id, from_type: Order::USER, creator_id: buyer_id, created_at: 1.day.ago) }
+    let!(:order1_line_item1) do
+      Fabricate(
+        :line_item,
+        order: order,
+        artwork_id: 'artwork1',
+        edition_set_id: 'edi-1',
+        list_price_cents: 200_00
+      )
+    end
+    let!(:buyer_offer1) do
+      Fabricate(
+        :offer,
+        order: order,
+        amount_cents: 200,
+        from_id: buyer_id,
+        from_type: Order::USER,
+        creator_id: buyer_id,
+        submitted_at: 2.days.ago,
+        created_at: 2.days.ago
+      )
+    end
+    let!(:buyer_offer2) do
+      Fabricate(
+        :offer,
+        order: order,
+        amount_cents: 300,
+        from_id: buyer_id,
+        from_type: Order::USER,
+        creator_id: buyer_id,
+        created_at: 1.day.ago
+      )
+    end
     let(:query) do
       <<-GRAPHQL
         query($id: ID) {
@@ -54,7 +83,9 @@ describe Api::GraphqlController, type: :request do
     end
     it 'includes offers' do
       result = client.execute(query, id: order.id)
-      expect(result.data.order.offers.edges.map(&:node).map(&:id)).to match_array [buyer_offer1.id]
+      expect(
+        result.data.order.offers.edges.map(&:node).map(&:id)
+      ).to match_array [buyer_offer1.id]
     end
   end
 end

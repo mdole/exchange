@@ -10,13 +10,17 @@ describe Api::GraphqlController, type: :request do
         expect(response.status).to eq 401
       end
       it 'raises error when unknown jwt' do
-        post '/api/graphql', params: { query: query }, headers: { 'Authorization' => 'Bearer: random-token' }
+        post '/api/graphql',
+             params: { query: query },
+             headers: { 'Authorization' => 'Bearer: random-token' }
         expect(response.status).to eq 401
       end
     end
 
     context 'authorized' do
-      let(:headers) { jwt_headers(user_id: 'user_id', partner_ids: ['partner_id']) }
+      let(:headers) do
+        jwt_headers(user_id: 'user_id', partner_ids: %w[partner_id])
+      end
       it 'returns schema' do
         post '/api/graphql', params: { query: query }, headers: headers
         expect(response.status).to eq 200

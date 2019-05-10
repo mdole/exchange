@@ -9,14 +9,63 @@ describe Api::GraphqlController, type: :request do
 
     let(:artwork_id) { 'a-1' }
     let(:edition_set_id) { 'e-1' }
-    let(:order1) { Fabricate(:order, seller_id: seller_id, buyer_id: user_id, state: Order::PENDING) }
-    let!(:line_item1) { Fabricate(:line_item, order: order1, artwork_id: artwork_id, edition_set_id: edition_set_id, quantity: 2) }
-    let(:order2) { Fabricate(:order, seller_id: seller_id, buyer_id: user_id, state: Order::SUBMITTED) }
-    let!(:line_item2) { Fabricate(:line_item, order: order2, artwork_id: artwork_id, edition_set_id: edition_set_id, quantity: 2) }
-    let(:order3) { Fabricate(:order, seller_id: seller_id, buyer_id: user_id, state: Order::FULFILLED) }
-    let!(:line_item3) { Fabricate(:line_item, order: order3, artwork_id: artwork_id, edition_set_id: edition_set_id, quantity: 2) }
-    let(:order4) { Fabricate(:order, seller_id: seller_id, buyer_id: user_id, state: Order::FULFILLED) }
-    let!(:line_item4) { Fabricate(:line_item, order: order3, artwork_id: 'foo', edition_set_id: 'bar', quantity: 2) }
+    let(:order1) do
+      Fabricate(
+        :order,
+        seller_id: seller_id, buyer_id: user_id, state: Order::PENDING
+      )
+    end
+    let!(:line_item1) do
+      Fabricate(
+        :line_item,
+        order: order1,
+        artwork_id: artwork_id,
+        edition_set_id: edition_set_id,
+        quantity: 2
+      )
+    end
+    let(:order2) do
+      Fabricate(
+        :order,
+        seller_id: seller_id, buyer_id: user_id, state: Order::SUBMITTED
+      )
+    end
+    let!(:line_item2) do
+      Fabricate(
+        :line_item,
+        order: order2,
+        artwork_id: artwork_id,
+        edition_set_id: edition_set_id,
+        quantity: 2
+      )
+    end
+    let(:order3) do
+      Fabricate(
+        :order,
+        seller_id: seller_id, buyer_id: user_id, state: Order::FULFILLED
+      )
+    end
+    let!(:line_item3) do
+      Fabricate(
+        :line_item,
+        order: order3,
+        artwork_id: artwork_id,
+        edition_set_id: edition_set_id,
+        quantity: 2
+      )
+    end
+    let(:order4) do
+      Fabricate(
+        :order,
+        seller_id: seller_id, buyer_id: user_id, state: Order::FULFILLED
+      )
+    end
+    let!(:line_item4) do
+      Fabricate(
+        :line_item,
+        order: order3, artwork_id: 'foo', edition_set_id: 'bar', quantity: 2
+      )
+    end
 
     let(:query) do
       <<-GRAPHQL
@@ -39,14 +88,18 @@ describe Api::GraphqlController, type: :request do
     end
 
     it 'returns error when missing both artworkId and editionSetId' do
-      expect do
-        client.execute(query, order_states: ['CANCELED'])
-      end.to raise_error do |error|
+      expect {
+        client.execute(query, order_states: %w[CANCELED])
+      }.to raise_error do |error|
         expect(error).to be_a(Graphlient::Errors::ServerError)
         expect(error.message).to eq 'the server responded with status 400'
         expect(error.status_code).to eq 400
-        expect(error.response['errors'].first['extensions']['code']).to eq 'missing_params'
-        expect(error.response['errors'].first['extensions']['type']).to eq 'validation'
+        expect(
+          error.response['errors'].first['extensions']['code']
+        ).to eq 'missing_params'
+        expect(
+          error.response['errors'].first['extensions']['type']
+        ).to eq 'validation'
       end
     end
 
@@ -54,7 +107,9 @@ describe Api::GraphqlController, type: :request do
       it 'returns line items' do
         result = client.execute(query, artworkId: artwork_id)
         expect(result.data.line_items.edges.count).to eq 3
-        expect(result.data.line_items.edges.first.node.artwork_id).to eq artwork_id
+        expect(
+          result.data.line_items.edges.first.node.artwork_id
+        ).to eq artwork_id
         expect(result.data.line_items.edges.first.node.order.id).to eq order1.id
       end
     end
@@ -63,16 +118,24 @@ describe Api::GraphqlController, type: :request do
       it 'returns line items' do
         result = client.execute(query, editionSetId: edition_set_id)
         expect(result.data.line_items.edges.count).to eq 3
-        expect(result.data.line_items.edges.first.node.edition_set_id).to eq edition_set_id
+        expect(
+          result.data.line_items.edges.first.node.edition_set_id
+        ).to eq edition_set_id
         expect(result.data.line_items.edges.first.node.order.id).to eq order1.id
       end
     end
 
     context 'query with artworkId and orderStates' do
       it 'returns line items' do
-        result = client.execute(query, artworkId: artwork_id, orderStates: %w[SUBMITTED FULFILLED])
+        result =
+          client.execute(
+            query,
+            artworkId: artwork_id, orderStates: %w[SUBMITTED FULFILLED]
+          )
         expect(result.data.line_items.edges.count).to eq 2
-        expect(result.data.line_items.edges.first.node.artwork_id).to eq artwork_id
+        expect(
+          result.data.line_items.edges.first.node.artwork_id
+        ).to eq artwork_id
         expect(result.data.line_items.edges.first.node.order.id).to eq order2.id
       end
     end
@@ -81,14 +144,18 @@ describe Api::GraphqlController, type: :request do
       context 'untrusted app' do
         let(:jwt_roles) { 'foobar' }
         it 'raises error' do
-          expect do
+          expect {
             client.execute(query, artworkId: artwork_id)
-          end.to raise_error do |error|
+          }.to raise_error do |error|
             expect(error).to be_a(Graphlient::Errors::ServerError)
             expect(error.status_code).to eq 400
             expect(error.message).to eq 'the server responded with status 400'
-            expect(error.response['errors'].first['extensions']['code']).to eq 'not_found'
-            expect(error.response['errors'].first['extensions']['type']).to eq 'validation'
+            expect(
+              error.response['errors'].first['extensions']['code']
+            ).to eq 'not_found'
+            expect(
+              error.response['errors'].first['extensions']['type']
+            ).to eq 'validation'
           end
         end
       end

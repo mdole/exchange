@@ -3,39 +3,50 @@ require 'taxjar'
 require 'webmock/rspec'
 
 def stub_tax_for_order
-  stub_request(:post, Taxjar::API::Request::DEFAULT_API_URL + '/v2/taxes').to_return(body: sales_tax_fixture.to_json, headers: { content_type: 'application/json; charset=utf-8' })
-  stub_request(:post, Taxjar::API::Request::DEFAULT_API_URL + '/v2/transactions/orders').to_return(body: order_fixture.to_json, headers: { content_type: 'application/json; charset=utf-8' })
+  stub_request(:post, Taxjar::API::Request::DEFAULT_API_URL + '/v2/taxes')
+    .to_return(
+    body: sales_tax_fixture.to_json,
+    headers: { content_type: 'application/json; charset=utf-8' }
+  )
+  stub_request(
+    :post,
+    Taxjar::API::Request::DEFAULT_API_URL + '/v2/transactions/orders'
+  )
+    .to_return(
+    body: order_fixture.to_json,
+    headers: { content_type: 'application/json; charset=utf-8' }
+  )
 end
 
 def order_fixture
   {
     "order": {
-      "transaction_id": "123",
-      "user_id": 10649,
-      "transaction_date": "2015-05-14T00:00:00Z",
-      "from_country": "US",
-      "from_zip": "93107",
-      "from_state": "CA",
-      "from_city": "SANTA BARBARA",
-      "from_street": "1281 State St",
-      "to_country": "US",
-      "to_zip": "90002",
-      "to_state": "CA",
-      "to_city": "LOS ANGELES",
-      "to_street": "123 Palm Grove Ln",
-      "amount": "17.45",
-      "shipping": "1.5",
-      "sales_tax": "0.95",
+      "transaction_id": '123',
+      "user_id": 10_649,
+      "transaction_date": '2015-05-14T00:00:00Z',
+      "from_country": 'US',
+      "from_zip": '93107',
+      "from_state": 'CA',
+      "from_city": 'SANTA BARBARA',
+      "from_street": '1281 State St',
+      "to_country": 'US',
+      "to_zip": '90002',
+      "to_state": 'CA',
+      "to_city": 'LOS ANGELES',
+      "to_street": '123 Palm Grove Ln',
+      "amount": '17.45',
+      "shipping": '1.5',
+      "sales_tax": '0.95',
       "line_items": [
         {
-          "id": "1",
+          "id": '1',
           "quantity": 1,
-          "product_identifier": "12-34243-9",
-          "description": "Fuzzy Widget",
-          "product_tax_code": "20010",
-          "unit_price": "15.0",
-          "discount": "0.0",
-          "sales_tax": "0.95"
+          "product_identifier": '12-34243-9',
+          "description": 'Fuzzy Widget',
+          "product_tax_code": '20010',
+          "unit_price": '15.0',
+          "discount": '0.0',
+          "sales_tax": '0.95'
         }
       ]
     }

@@ -23,7 +23,8 @@ class OrderEvent < Events::BaseEvent
     shipping_name
     shipping_postal_code
     shipping_region
-    shipping_total_cents state
+    shipping_total_cents
+    state
     state_reason
     state_expires_at
     tax_total_cents
@@ -43,13 +44,13 @@ class OrderEvent < Events::BaseEvent
   end
 
   def subject
-    {
-      id: @subject
-    }
+    { id: @subject }
   end
 
   def properties
-    PROPERTIES_ATTRS.map { |att| [att, @object.send(att)] }.to_h.merge(line_items: line_items_details, last_offer: last_offer)
+    PROPERTIES_ATTRS.map { |att| [att, @object.send(att)] }.to_h.merge(
+      line_items: line_items_details, last_offer: last_offer
+    )
   end
 
   private
@@ -62,14 +63,16 @@ class OrderEvent < Events::BaseEvent
     return unless @object.last_offer
 
     last_offer = @object.last_offer
-    in_response_to = if last_offer.responds_to
-      {
-        id: last_offer.responds_to.id,
-        amount_cents: last_offer.responds_to.amount_cents,
-        created_at: last_offer.responds_to.created_at,
-        from_participant: last_offer.responds_to.from_participant
-      }
-    end
+    in_response_to =
+      if last_offer.responds_to
+        {
+          id: last_offer.responds_to.id,
+          amount_cents: last_offer.responds_to.amount_cents,
+          created_at: last_offer.responds_to.created_at,
+          from_participant: last_offer.responds_to.from_participant
+        }
+      end
+
     {
       id: last_offer.id,
       amount_cents: last_offer.amount_cents,
